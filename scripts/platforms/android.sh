@@ -26,9 +26,213 @@ build_android_base_libs() {
                 tar -xzf /tmp/zlib.tar.gz -C "$SRC"
                 rm /tmp/zlib.tar.gz
         fi
+
+        # Build the remaining multimedia stack required by LIBS_COMMON for Android.
+        build_android_media_libs() {
+            local ABI=$1 API=$2 NDK=$3 PREFIX=$4 SRC=$5 TARGET_HOST=$6
+            local TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+
+            mkdir -p "$SRC" "$PREFIX"
+            export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+            export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
+            export PATH="$TOOLCHAIN/bin:$PATH"
+
+            fetch_src() {
+                local name=$1 ver=$2 url=$3
+                if [ -d "$SRC/${name}-${ver}" ]; then
+                    return
+                fi
+                echo "--- Descargando $name $ver ---"
+                curl -L "$url" -o /tmp/${name}.tar
+                case "$url" in
+                    *.tar.gz|*.tgz) tar -xzf /tmp/${name}.tar -C "$SRC" ;;
+                    *.tar.xz|*.txz) tar -xJf /tmp/${name}.tar -C "$SRC" ;;
+                    *.tar.bz2) tar -xjf /tmp/${name}.tar -C "$SRC" ;;
+                    *) echo "[WARN] Formato desconocido para $url" >&2 ;;
+                esac
+                rm -f /tmp/${name}.tar
+            }
+
+            meson_cross_file() {
+                local cpu_family cpu
+                case "$ABI" in
+                    arm64-v8a) cpu_family="aarch64"; cpu="aarch64" ;;
+                    armeabi-v7a|arm|armv7-a|arm-v7n) cpu_family="arm"; cpu="armv7" ;;
+                    x86) cpu_family="x86"; cpu="i686" ;;
+                    x86_64) cpu_family="x86_64"; cpu="x86_64" ;;
+                esac
+                cat > /tmp/meson-${ABI}.ini <<EOF
+        [binaries]
+        c = '$CC'
+        ar = '$AR'
+        strip = '$STRIP'
+        pkgconfig = 'pkg-config'
+
+        [host_machine]
         ( cd "$SRC/zlib-$ZVER" && make distclean >/dev/null 2>&1 || true
             CC="$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang" \
             AR="$TOOLCHAIN/bin/llvm-ar" RANLIB="$TOOLCHAIN/bin/llvm-ranlib" \
+        endian = 'little'
+        EOF
+            }
+
+            # libogg (para libvorbis)
+            fetch_src "libogg" "1.3.5" "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz"
+            ( cd "$SRC/libogg-1.3.5" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic
+                make -j"$(nproc)" && make install )
+
+            # libvorbis (requiere libogg)
+            fetch_src "libvorbis" "1.3.7" "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz"
+            ( cd "$SRC/libvorbis-1.3.7" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic
+                make -j"$(nproc)" && make install )
+
+            # opus
+            fetch_src "opus" "1.4" "https://downloads.xiph.org/releases/opus/opus-1.4.tar.gz"
+            ( cd "$SRC/opus-1.4" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic --disable-extra-programs --disable-doc
+                make -j"$(nproc)" && make install )
+
+            # libmp3lame
+            fetch_src "lame" "3.100" "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz"
+            ( cd "$SRC/lame-3.100" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic --disable-frontend
+                make -j"$(nproc)" && make install )
+
+            # twolame
+            fetch_src "twolame" "0.4.0" "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"
+            ( cd "$SRC/twolame-0.4.0" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic
+                make -j"$(nproc)" && make install )
+
+            # fribidi (meson)
+            fetch_src "fribidi" "1.0.13" "https://github.com/fribidi/fribidi/releases/download/v1.0.13/fribidi-1.0.13.tar.xz"
+            meson_cross_file
+            ( cd "$SRC/fribidi-1.0.13" && rm -rf build-android-$ABI && \
+                meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
+                    --cross-file /tmp/meson-${ABI}.ini -Ddocs=false -Dbin=false -Dtests=false && \
+                ninja -C build-android-$ABI install )
+
+            # fontconfig
+            fetch_src "fontconfig" "2.15.0" "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.15.0.tar.gz"
+            ( cd "$SRC/fontconfig-2.15.0" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS -I$PREFIX/include" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    FREETYPE_LIBS="-L$PREFIX/lib -lfreetype" FREETYPE_CFLAGS="-I$PREFIX/include/freetype2" \
+                    EXPAT_LIBS="-L$PREFIX/lib -lexpat" EXPAT_CFLAGS="-I$PREFIX/include" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic \
+                        --with-freetype --with-expat --disable-docs --disable-nls
+                make -j"$(nproc)" && make install )
+
+            # libass
+            fetch_src "libass" "0.17.3" "https://github.com/libass/libass/releases/download/0.17.3/libass-0.17.3.tar.gz"
+            ( cd "$SRC/libass-0.17.3" && make distclean >/dev/null 2>&1 || true
+                CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS -I$PREFIX/include" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+                    ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --disable-asm
+                make -j"$(nproc)" && make install )
+
+            # libvpx
+            fetch_src "libvpx" "1.13.1" "https://github.com/webmproject/libvpx/archive/refs/tags/v1.13.1.tar.gz"
+            local VPX_TARGET
+            case "$ABI" in
+                arm64-v8a) VPX_TARGET="arm64-android-gcc" ;;
+                armeabi-v7a|arm|armv7-a|arm-v7n) VPX_TARGET="armv7-android-gcc" ;;
+                x86) VPX_TARGET="x86-android-gcc" ;;
+                x86_64) VPX_TARGET="x86_64-android-gcc" ;;
+            esac
+            ( cd "$SRC/libvpx-1.13.1" && make distclean >/dev/null 2>&1 || true
+                ./configure --prefix="$PREFIX" --target=$VPX_TARGET --disable-examples --disable-tools --disable-unit-tests \
+                    --enable-pic --enable-static --disable-shared --disable-docs --disable-webm-io --disable-libyuv \
+                    --disable-runtime-cpu-detect
+                make -j"$(nproc)" && make install )
+
+            # libwebp
+            fetch_src "libwebp" "1.3.2" "https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz"
+            ( cd "$SRC/libwebp-1.3.2" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DCMAKE_PREFIX_PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF \
+                    -DWEBP_BUILD_EXTRAS=OFF -DWEBP_BUILD_WEBPINFO=OFF -DWEBP_BUILD_WEBPMUX=OFF \
+                    -DWEBP_BUILD_CWEBP=OFF -DWEBP_BUILD_DWEBP=OFF -DWEBP_BUILD_GIF2WEBP=OFF -DWEBP_BUILD_IMG2WEBP=OFF ..
+                make -j"$(nproc)" && make install )
+
+            # libopenjpeg
+            fetch_src "openjpeg" "2.5.2" "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.2.tar.gz"
+            ( cd "$SRC/openjpeg-2.5.2" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DBUILD_SHARED_LIBS=OFF -DBUILD_CODEC=OFF -DBUILD_PKGCONFIG_FILES=ON -DBUILD_TESTING=OFF ..
+                make -j"$(nproc)" && make install )
+
+            # zimg
+            fetch_src "zimg" "3.0.5" "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.5.tar.gz"
+            ( cd "$SRC/zimg-release-3.0.5" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DENABLE_X86SIMD=OFF -DENABLE_AVX512=OFF ..
+                make -j"$(nproc)" && make install )
+
+            # libsoxr
+            fetch_src "soxr" "0.1.3" "https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz"
+            ( cd "$SRC/soxr-0.1.3-Source" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DWITH_OPENMP=OFF ..
+                make -j"$(nproc)" && make install )
+
+            # libvidstab
+            fetch_src "vid.stab" "1.1.1" "https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz"
+            ( cd "$SRC/vid.stab-1.1.1" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DBUILD_SHARED_LIBS=OFF -DUSE_OMP=OFF ..
+                make -j"$(nproc)" && make install )
+
+            # libsrt
+            fetch_src "srt" "1.5.3" "https://github.com/Haivision/srt/archive/refs/tags/v1.5.3.tar.gz"
+            ( cd "$SRC/srt-1.5.3" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DENABLE_TESTING=OFF \
+                    -DUSE_OPENSSL_PC=ON -DENABLE_C_DEPS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
+                make -j"$(nproc)" && make install )
+
+            # libaom
+            fetch_src "aom" "3.9.1" "https://github.com/AllianceForOpenMedia/aom/archive/refs/tags/v3.9.1.tar.gz"
+            ( cd "$SRC/aom-3.9.1" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+                cmake -G"Unix Makefiles" \
+                    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+                    -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
+                    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
+                    -DBUILD_SHARED_LIBS=OFF -DENABLE_DOCS=OFF -DENABLE_TESTS=OFF -DENABLE_TOOLS=OFF -DENABLE_EXAMPLES=OFF \
+                    -DENABLE_NASM=OFF -DENABLE_CCACHE=OFF -DCONFIG_PIC=1
+                make -j"$(nproc)" && make install )
+
+            # libdav1d
+            fetch_src "dav1d" "1.4.2" "https://code.videolan.org/videolan/dav1d/-/archive/1.4.2/dav1d-1.4.2.tar.bz2"
+            meson_cross_file
+            ( cd "$SRC/dav1d-1.4.2" && rm -rf build-android-$ABI && \
+                meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
+                    --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false && \
+                ninja -C build-android-$ABI install )
+        }
             CFLAGS="-fPIE -fPIC -O2" LDFLAGS="-fPIE -pie" \
             ./configure --prefix="$PREFIX" --static --archs=-fPIC
             make -j"$(nproc)" && make install )
