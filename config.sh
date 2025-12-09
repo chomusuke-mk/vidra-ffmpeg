@@ -1,4 +1,4 @@
-FFMPEG_VERSION=7.1.3
+FFMPEG_VERSION=8.0.1
 EXTRA_VERSION="vidra_build-chomusuke.dev"
 
 # Librerías comunes (se suman a cada OS): universales y útiles para yt-dlp
@@ -6,7 +6,7 @@ LIBS_COMMON="x264 zlib brotli openssl libxml2 freetype harfbuzz fribidi fontconf
 
 # Extras específicos de Linux (aceleración y formatos desktop)
 LIBS_LINUX="vaapi vulkan libshaderc opencl libvpl nvcodec"
-LIBS_ANDROID="x264 mediacodec jni"
+LIBS_ANDROID="mediacodec jni"
 
 # Librerías específicas de Windows (coinciden con paquetes MSYS2 descargados)
 LIBS_WINDOWS="dxva2 d3d11va schannel"

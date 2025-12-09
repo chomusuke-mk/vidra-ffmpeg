@@ -278,11 +278,20 @@ EOF
     ensure_meson
     fetch_src "fribidi" "1.0.13" "https://github.com/fribidi/fribidi/releases/download/v1.0.13/fribidi-1.0.13.tar.xz"
     meson_cross_file
-    ( cd "$SRC/fribidi-1.0.13" && rm -rf build-android-$ABI && \
-        meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
-            --cross-file /tmp/meson-${ABI}.ini -Ddocs=false -Dbin=false -Dtests=false && \
-        touch build-android-$ABI/meson-private/coredata.dat && \
-        ninja -C build-android-$ABI install )
+    local FRIBIDI_BUILD="/tmp/fribidi-android-$ABI"
+    ( cd "$SRC/fribidi-1.0.13" && rm -rf "$FRIBIDI_BUILD" && mkdir -p "$FRIBIDI_BUILD" && \
+        ( meson setup "$FRIBIDI_BUILD" --prefix="$PREFIX" --buildtype=release --default-library=static \
+            --cross-file /tmp/meson-${ABI}.ini -Ddocs=false -Dbin=false -Dtests=false \
+            || { echo "[WARN] meson setup failed; wiping and retrying" >&2; \
+                 rm -rf "$FRIBIDI_BUILD" && mkdir -p "$FRIBIDI_BUILD" && sleep 1 && \
+                 meson setup "$FRIBIDI_BUILD" --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
+                    --cross-file /tmp/meson-${ABI}.ini -Ddocs=false -Dbin=false -Dtests=false \
+                 || { echo "[WARN] meson setup still failing; touching coredata and retrying" >&2; \
+                      touch "$FRIBIDI_BUILD"/meson-private/coredata.dat 2>/dev/null || true; sleep 1; \
+                      meson setup "$FRIBIDI_BUILD" --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
+                        --cross-file /tmp/meson-${ABI}.ini -Ddocs=false -Dbin=false -Dtests=false; }; } ) && \
+        { find "$FRIBIDI_BUILD" -maxdepth 2 -type f -exec touch {} + 2>/dev/null || true; } && \
+        ninja -C "$FRIBIDI_BUILD" install )
 
     # fontconfig
     ensure_gperf
@@ -383,23 +392,31 @@ EOF
         make -j"$(nproc)" && make install )
 
     # libaom
-    fetch_src "aom" "3.9.0" "https://github.com/AllianceForOpenMedia/aom/archive/refs/tags/v3.9.0.tar.gz"
-    ( cd "$SRC/aom-3.9.0" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
+    fetch_src "libaom" "3.9.0" "https://storage.googleapis.com/aom-releases/libaom-3.9.0.tar.gz"
+    ( cd "$SRC/libaom-3.9.0" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
         cmake -G"Unix Makefiles" \
             -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
             -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
             -DBUILD_SHARED_LIBS=OFF -DENABLE_DOCS=OFF -DENABLE_TESTS=OFF -DENABLE_TOOLS=OFF -DENABLE_EXAMPLES=OFF \
-            -DENABLE_NASM=OFF -DENABLE_CCACHE=OFF -DCONFIG_PIC=1
+            -DENABLE_NASM=OFF -DENABLE_CCACHE=OFF -DCONFIG_PIC=1 ..
         make -j"$(nproc)" && make install )
 
     # libdav1d
     ensure_meson
     fetch_src "dav1d" "1.4.2" "https://code.videolan.org/videolan/dav1d/-/archive/1.4.2/dav1d-1.4.2.tar.bz2"
     meson_cross_file
-    ( cd "$SRC/dav1d-1.4.2" && rm -rf build-android-$ABI && \
-        meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
-            --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false && \
+    ( cd "$SRC/dav1d-1.4.2" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && \
+        ( meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
+            --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
+            || { echo "[WARN] meson setup failed; wiping and retrying" >&2; \
+                 rm -rf build-android-$ABI && mkdir -p build-android-$ABI && sleep 1 && \
+                 meson setup build-android-$ABI --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
+                    --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
+                 || { echo "[WARN] meson setup still failing; touching coredata and retrying" >&2; \
+                      touch build-android-$ABI/meson-private/coredata.dat 2>/dev/null || true; sleep 1; \
+                      meson setup build-android-$ABI --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
+                        --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false; }; } ) && \
         touch build-android-$ABI/meson-private/coredata.dat && \
         ninja -C build-android-$ABI install )
 }
@@ -428,33 +445,39 @@ function build_android {
         echo "--- ABI $ABI ---"
 
         arch_extra_flags=""
+        stl_triple=""
         case "$ABI" in
             arm64-v8a)
                 TARGET_HOST="aarch64-linux-android"
                 ARCH="aarch64"
                 CPU=""
+                stl_triple="aarch64-linux-android"
                 ;;
             armeabi-v7a|arm|armv7-a|arm-v7n)
                 TARGET_HOST="armv7a-linux-androideabi"
                 ARCH="arm"
                 CPU="armv7-a"
+                stl_triple="arm-linux-androideabi"
                 ;;
             x86)
                 TARGET_HOST="i686-linux-android"
                 ARCH="x86"
                 CPU=""
                 arch_extra_flags="--disable-x86asm --disable-asm"
+                stl_triple="i686-linux-android"
                 ;;
             x86_64)
                 TARGET_HOST="x86_64-linux-android"
                 ARCH="x86_64"
                 CPU=""
                 arch_extra_flags="--disable-x86asm"
+                stl_triple="x86_64-linux-android"
                 ;;
             native)
                 TARGET_HOST="aarch64-linux-android"
                 ARCH="aarch64"
                 CPU=""
+                stl_triple="aarch64-linux-android"
                 ;;
             *)
                 echo "[WARN] ABI no soportado: $ABI" >&2
@@ -476,7 +499,10 @@ function build_android {
         # Suppress noisy upstream deprecation/const-conversion warnings for cleaner Android logs.
         export CFLAGS="-fPIE -fPIC -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -I$PREFIX/include"
         export CPPFLAGS="-I$PREFIX/include"
-        export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
+        libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}/${API}"
+        [ -d "$libcxx_dir" ] || libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}"
+
+        export LDFLAGS="-fPIE -pie -L$PREFIX/lib -L$libcxx_dir -static-libstdc++ -static-libgcc"
 
         mkdir -p "$PREFIX" "$PKG_CONFIG_PATH"
 
@@ -506,6 +532,7 @@ function build_android {
             --strip=$STRIP \
             --enable-cross-compile \
             --pkg-config-flags="--static" \
+            --extra-libs="-lm -Wl,-Bstatic -lc++_static -Wl,-Bdynamic -latomic" \
             --enable-static \
             --disable-shared \
             --enable-gpl \
@@ -517,6 +544,9 @@ function build_android {
             $arch_extra_flags \
             ${extra_version_flag:+$extra_version_flag} \
             $feature_flags
+
+        # Force static libc++ so ffmpeg does not depend on libc++_shared.so
+        sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
 
         make -j$(nproc)
 
