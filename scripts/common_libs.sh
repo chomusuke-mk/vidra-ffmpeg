@@ -22,7 +22,7 @@ COMMON_SRC_BUNDLES=(
 )
 
 # Default warning suppressions for mingw builds to keep output clean.
-MINGW_SUPPRESS_DEFAULT="-Wno-declaration-after-statement -Wno-array-parameter -Wno-deprecated-declarations -Wno-format -Wno-unused-but-set-variable"
+MINGW_SUPPRESS_DEFAULT="-Wno-declaration-after-statement -Wno-array-parameter -Wno-deprecated-declarations -Wno-format -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-maybe-uninitialized"
 
 SRC_ROOT="/build/sources"
 
@@ -408,6 +408,9 @@ function ffmpeg_feature_flags {
                 else
                     echo "[WARN] libva no encontrado; omitiendo vaapi" >&2
                 fi
+                ;;
+            vdpau)
+                flags+=" --enable-vdpau"
                 ;;
             amf)
                 echo "[WARN] AMF no soportado sin SDK; omitiendo" >&2

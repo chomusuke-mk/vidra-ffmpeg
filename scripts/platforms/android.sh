@@ -497,7 +497,7 @@ function build_android {
         export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
         export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
         # Suppress noisy upstream deprecation/const-conversion warnings for cleaner Android logs.
-        export CFLAGS="-fPIE -fPIC -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -I$PREFIX/include"
+        export CFLAGS="-fPIE -fPIC -std=gnu11 -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-maybe-uninitialized -I$PREFIX/include"
         export CPPFLAGS="-I$PREFIX/include"
         libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}/${API}"
         [ -d "$libcxx_dir" ] || libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}"

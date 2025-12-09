@@ -3,6 +3,8 @@ set -euo pipefail
 
 TARGET=${1:-}
 
+echo "Usando configuración en /build/config.sh; pasa target (windows|linux|android)."
+
 if [ "$TARGET" == "windows" ]; then
     source /build/scripts/platforms/windows.sh
     build_windows

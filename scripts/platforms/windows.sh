@@ -36,6 +36,8 @@ function prepare_win_sysroot {
 function build_windows {
     echo ">>> Iniciando compilación para WINDOWS (x86_64) <<<"
 
+    echo "[win-deps] Politica: se intenta binario 100% estático; si alguna lib solo existe como DLL, debe ir junto a ffmpeg.exe con su licencia."
+
     load_config
     ensure_sources
 
@@ -150,8 +152,8 @@ EOF
         ${extra_version_flag:+$extra_version_flag} \
         --enable-static --disable-shared \
         --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
-        --disable-libbluray --disable-libssh --disable-librav1e --disable-ffplay\
-        --extra-cflags="-static -std=gnu99 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBTWOLAME_STATIC -DLIBSSH_STATIC -DZMQ_STATIC ${MINGW_SUPPRESS_WARNINGS:-}" \
+        --disable-ffplay\
+        --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBTWOLAME_STATIC -DLIBSSH_STATIC -DZMQ_STATIC -Wno-maybe-uninitialized -Wno-unknown-pragmas ${MINGW_SUPPRESS_WARNINGS:-}" \
         --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
         --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
         $feature_flags
