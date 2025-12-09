@@ -434,15 +434,18 @@ function build_android {
 
         export PREFIX="/build/dist/android/$ABI"
         export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+        export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
         # Suppress noisy upstream deprecation/const-conversion warnings for cleaner Android logs.
-        export CFLAGS="-fPIE -fPIC -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable"
-        export LDFLAGS="-fPIE -pie"
+        export CFLAGS="-fPIE -fPIC -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -I$PREFIX/include"
+        export CPPFLAGS="-I$PREFIX/include"
+        export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
 
         mkdir -p "$PREFIX" "$PKG_CONFIG_PATH"
 
         # Build base dependencies for this ABI so compose users don't compile manually.
         build_android_base_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT"
         build_android_render_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT"
+        build_android_media_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT" "$TARGET_HOST"
 
         build_x264 "$TARGET_HOST" "$PREFIX" "--cross-prefix=$TOOLCHAIN/bin/llvm- --disable-asm --enable-pic --disable-cli"
 
