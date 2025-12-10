@@ -27,7 +27,8 @@ COMMON_SRC_BUNDLES=(
 )
 
 # Default warning suppressions for mingw builds to keep output clean.
-MINGW_SUPPRESS_DEFAULT="-Wno-declaration-after-statement -Wno-array-parameter -Wno-deprecated-declarations -Wno-format -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-maybe-uninitialized"
+# By default leave empty; set MINGW_SUPPRESS_WARNINGS via Dockerfile/ENV if desired.
+MINGW_SUPPRESS_DEFAULT=""
 
 SRC_ROOT="/build/sources"
 
@@ -104,9 +105,16 @@ function ensure_sources {
         git clone --branch "$X264_VER" --depth 1 https://code.videolan.org/videolan/x264.git "$SRC_ROOT/x264"
     fi
 
-    if [ ! -d "$SRC_ROOT/ffmpeg-$FFMPEG_VER" ]; then
+    local ffmpeg_dir="$SRC_ROOT/ffmpeg-$FFMPEG_VER"
+    # If the directory exists but lacks configure (corrupt/partial download), refresh it.
+    if [ -d "$ffmpeg_dir" ] && [ ! -f "$ffmpeg_dir/configure" ]; then
+        echo "[WARN] FFmpeg $FFMPEG_VER incompleto; re-descargando..." >&2
+        rm -rf "$ffmpeg_dir"
+    fi
+
+    if [ ! -d "$ffmpeg_dir" ]; then
         echo "--- Descargando FFmpeg $FFMPEG_VER ---"
-        rm -rf "$SRC_ROOT/ffmpeg-$FFMPEG_VER"
+        rm -rf "$ffmpeg_dir"
         curl -L "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VER.tar.xz" -o /tmp/ffmpeg.tar.xz
         tar -xJf /tmp/ffmpeg.tar.xz -C "$SRC_ROOT"
         rm /tmp/ffmpeg.tar.xz
@@ -132,7 +140,8 @@ function build_x264 {
     # Silence noisy warnings from mingw builds without muting other targets.
     local cflags=${CFLAGS:-}
     if [[ "$HOST" == *mingw* ]]; then
-        cflags+=" ${MINGW_SUPPRESS_WARNINGS:-$MINGW_SUPPRESS_DEFAULT} -Wno-alloc-size-larger-than -Wno-unused-function -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast"
+        # All warning suppressions come from MINGW_SUPPRESS_WARNINGS; Dockerfile sets the defaults.
+        cflags+=" ${MINGW_SUPPRESS_WARNINGS:-$MINGW_SUPPRESS_DEFAULT}"
     fi
 
     pushd "$SRC_ROOT/x264" >/dev/null

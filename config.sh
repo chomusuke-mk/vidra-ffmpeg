@@ -3,19 +3,18 @@ EXTRA_VERSION="vidra_build-chomusuke.dev"
 
 # Librerías comunes (All en libraries.md)
 LIBS_COMMON="x264 zlib brotli openssl libxml2 freetype harfbuzz fribidi libass libmp3lame opus libdav1d libvpx libwebp libopenjpeg zimg libsoxr"
-
 # Librerías comunes adicionales (solo para build "full")
 LIBS_COMMON_EXTENDED=""
 
-# Extras Linux (solo Linux en libraries.md o compartidas Windows|Linux)
+# Extras Linux
 LIBS_LINUX="fontconfig libx265 libsvtav1 libsnappy libssh"
 LIBS_LINUX_EXTENDED="libvpl vaapi vulkan opencl nvcodec"
 
-# Extras Android (solo Android en libraries.md)
+# Extras Android
 LIBS_ANDROID=""
 LIBS_ANDROID_EXTENDED="mediacodec jni"
 
-# Extras Windows (solo Windows en libraries.md o compartidas Windows|Linux)
+# Extras Windows
 LIBS_WINDOWS="schannel fontconfig libx265 libsvtav1 libsnappy libssh"
 LIBS_WINDOWS_EXTENDED="libvpl nvcodec dxva2 d3d11va"
 

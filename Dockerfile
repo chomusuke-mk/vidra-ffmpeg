@@ -8,7 +8,7 @@ ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
 ENV PATH=${CUDA_HOME}/bin:/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
 ENV ANDROID_NDK_HOME=/opt/android-ndk \
   NDK=/opt/android-ndk \
-  MINGW_SUPPRESS_WARNINGS="-Wno-dangling-pointer -Wno-stringop-overflow -Wno-array-bounds"
+  MINGW_SUPPRESS_WARNINGS="-Wno-declaration-after-statement -Wno-array-parameter -Wno-deprecated-declarations -Wno-format -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-maybe-uninitialized -Wno-undef -Wno-dangling-pointer -Wno-stringop-overflow -Wno-array-bounds -Wno-alloc-size-larger-than -Wno-unused-function -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast"
 
 RUN apt-get update && apt-get install -y \
   build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
