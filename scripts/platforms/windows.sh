@@ -153,7 +153,7 @@ EOF
         --enable-static --disable-shared \
         --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
         --disable-ffplay\
-        --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBTWOLAME_STATIC -DLIBSSH_STATIC -DZMQ_STATIC -Wno-maybe-uninitialized -Wno-unknown-pragmas ${MINGW_SUPPRESS_WARNINGS:-}" \
+        --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC -Wno-maybe-uninitialized -Wno-unknown-pragmas ${MINGW_SUPPRESS_WARNINGS:-}" \
         --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
         --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
         $feature_flags

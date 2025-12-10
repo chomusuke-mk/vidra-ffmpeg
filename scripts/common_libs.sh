@@ -222,38 +222,11 @@ function ffmpeg_feature_flags {
             libx265)
                 add_flag_if_pkg "--enable-libx265" "libx265" x265
                 ;;
-            libxavs2)
-                add_flag_if_pkg "--enable-libxavs2" "libxavs2" xavs2
-                ;;
-            libxvid)
-                add_flag_if_pkg "--enable-libxvid" "libxvid" xvidcore libxvid
-                ;;
-            libtheora)
-                add_flag_if_pkg "--enable-libtheora" "libtheora" theora
-                ;;
-            libopenh264)
-                add_flag_if_pkg "--enable-libopenh264" "libopenh264" openh264
-                ;;
-            libvvenc)
-                add_flag_if_pkg "--enable-libvvenc" "libvvenc" vvenc
-                ;;
-            libaom)
-                add_flag_if_pkg "--enable-libaom" "libaom" aom
+            libsvtav1)
+                add_flag_if_pkg "--enable-libsvtav1" "libsvtav1" SvtAv1Enc svtav1
                 ;;
             libdav1d)
                 add_flag_if_pkg "--enable-libdav1d" "libdav1d" dav1d
-                ;;
-            libdavs2)
-                add_flag_if_pkg "--enable-libdavs2" "libdavs2" davs2
-                ;;
-            libuavs3d)
-                add_flag_if_pkg "--enable-libuavs3d" "libuavs3d" uavs3d
-                ;;
-            librav1e)
-                add_flag_if_pkg "--enable-librav1e" "librav1e" rav1e
-                ;;
-            libsvtav1)
-                add_flag_if_pkg "--enable-libsvtav1" "libsvtav1" SvtAv1Enc svtav1
                 ;;
             libvpx)
                 add_flag_if_pkg "--enable-libvpx" "libvpx" vpx
@@ -267,95 +240,20 @@ function ffmpeg_feature_flags {
             libopus|opus)
                 add_flag_if_pkg "--enable-libopus" "libopus" opus
                 ;;
-            libvorbis)
-                add_flag_if_pkg "--enable-libvorbis" "libvorbis" vorbisenc vorbis
+            libopenjpeg)
+                add_flag_if_pkg "--enable-libopenjpeg" "libopenjp2"
                 ;;
-            libtwolame|twolame)
-                add_flag_if_pkg "--enable-libtwolame" "libtwolame" twolame
-                ;;
-            libgme)
-                add_flag_if_pkg "--enable-libgme" "libgme"
-                ;;
-            libspeex)
-                add_flag_if_pkg "--enable-libspeex" "libspeex" speex
-                ;;
-            libgsm)
-                add_flag_if_pkg "--enable-libgsm" "libgsm" gsm
-                ;;
-            libssh)
-                add_flag_if_pkg "--enable-libssh" "libssh"
-                ;;
-            libsrt)
-                add_flag_if_pkg "--enable-libsrt" "libsrt" srt
-                ;;
-            librist)
-                add_flag_if_pkg "--enable-librist" "librist" rist
-                ;;
-            libzmq)
-                add_flag_if_pkg "--enable-libzmq" "libzmq"
-                ;;
-            libvmaf)
-                add_flag_if_pkg "--enable-libvmaf" "libvmaf"
-                ;;
-            libplacebo)
-                if [ "$target" = "windows" ]; then
-                    echo "[INFO] libplacebo omitido en Windows para evitar dependencia a libshaderc_shared.dll" >&2
-                    continue
-                fi
-                add_flag_if_pkg "--enable-libplacebo" "libplacebo"
-                ;;
-            libzimg|zimg)
+            zimg|libzimg)
                 add_flag_if_pkg "--enable-libzimg" "libzimg" zimg
-                ;;
-            libvidstab)
-                add_flag_if_pkg "--enable-libvidstab" "libvidstab" vidstab
-                ;;
-            librubberband)
-                add_flag_if_pkg "--enable-librubberband" "librubberband" rubberband
                 ;;
             libsoxr)
                 add_flag_if_pkg "--enable-libsoxr" "libsoxr" soxr
                 ;;
-            chromaprint)
-                add_flag_if_pkg "--enable-chromaprint" "chromaprint"
-                ;;
-            frei0r)
-                add_flag_if_pkg "--enable-frei0r" "frei0r"
-                ;;
             libsnappy)
                 add_flag_if_pkg "--enable-libsnappy" "libsnappy" snappy
                 ;;
-            libopenjpeg)
-                add_flag_if_pkg "--enable-libopenjpeg" "libopenjp2"
-                ;;
-            libbluray)
-                add_flag_if_pkg "--enable-libbluray" "libbluray"
-                ;;
-            libdvdnav)
-                add_flag_if_pkg "--enable-libdvdnav" "libdvdnav" dvdnav
-                ;;
-            libdvdread)
-                add_flag_if_pkg "--enable-libdvdread" "libdvdread" dvdread
-                ;;
-            libzvbi)
-                add_flag_if_pkg "--enable-libzvbi" "libzvbi" zvbi
-                ;;
-            sdl2)
-                add_flag_if_pkg "--enable-sdl2" "sdl2"
-                ;;
-            whisper)
-                local cfg_file="$SRC_ROOT/ffmpeg-$FFMPEG_VER/configure"
-                if [ -f "$cfg_file" ] && grep -q "libwhisper" "$cfg_file"; then
-                    flags+=" --enable-libwhisper"
-                else
-                    echo "[WARN] libwhisper no está disponible en FFmpeg $FFMPEG_VER; omitiendo" >&2
-                fi
-                ;;
-            iconv)
-                add_flag_if_pkg "--enable-iconv" "iconv"
-                ;;
-            zlib)
-                add_flag_if_pkg "--enable-zlib" "zlib"
+            openssl)
+                add_flag_if_pkg "--enable-openssl" "openssl" openssl libssl
                 ;;
             brotli)
                 local cfg_file="$SRC_ROOT/ffmpeg-$FFMPEG_VER/configure"
@@ -365,9 +263,6 @@ function ffmpeg_feature_flags {
                 ;;
             libxml2)
                 add_flag_if_pkg "--enable-libxml2" "libxml2" libxml-2.0
-                ;;
-            openssl)
-                add_flag_if_pkg "--enable-openssl" "openssl" openssl libssl
                 ;;
             fontconfig)
                 add_flag_if_pkg "--enable-fontconfig" "fontconfig"
@@ -384,17 +279,16 @@ function ffmpeg_feature_flags {
             libass)
                 add_flag_if_pkg "--enable-libass" "libass"
                 ;;
-            libaribcaption)
-                add_flag_if_pkg "--enable-libaribcaption" "libaribcaption"
+            zlib)
+                add_flag_if_pkg "--enable-zlib" "zlib"
                 ;;
-            libaribb24)
-                add_flag_if_pkg "--enable-libaribb24" "libaribb24"
+            libssh)
+                add_flag_if_pkg "--enable-libssh" "libssh"
+                ;;
+            libvpl)
+                add_flag_if_pkg "--enable-libvpl" "libvpl"
                 ;;
             nvcodec)
-                if [ "$target" = "windows" ]; then
-                    echo "[WARN] nvcodec requiere CUDA SDK para Windows; omitiendo flags" >&2
-                    continue
-                fi
                 if [ ! -d "/usr/local/cuda" ] && ! command -v nvcc >/dev/null 2>&1; then
                     echo "[WARN] CUDA toolkit no presente; omitiendo nvcodec" >&2
                     continue
@@ -408,12 +302,6 @@ function ffmpeg_feature_flags {
                 else
                     echo "[WARN] libva no encontrado; omitiendo vaapi" >&2
                 fi
-                ;;
-            vdpau)
-                flags+=" --enable-vdpau"
-                ;;
-            amf)
-                echo "[WARN] AMF no soportado sin SDK; omitiendo" >&2
                 ;;
             dxva2)
                 flags+=" --enable-dxva2"
@@ -430,32 +318,15 @@ function ffmpeg_feature_flags {
             vulkan)
                 add_flag_if_pkg "--enable-vulkan" "vulkan"
                 ;;
-            libshaderc)
-                add_flag_if_pkg "--enable-libshaderc" "libshaderc" shaderc
-                ;;
             opencl)
                 add_flag_if_pkg "--enable-opencl" "opencl" OpenCL
                 ;;
-            libvpl)
-                add_flag_if_pkg "--enable-libvpl" "libvpl"
-                ;;
             schannel)
-                # FFmpeg allows only one TLS backend; skip schannel if another is requested
-                if [[ "$libs" == *"openssl"* || "$libs" == *"gnutls"* || "$libs" == *"libtls"* || "$libs" == *"mbedtls"* ]]; then
-                    echo "[WARN] schannel entra en conflicto con otras TLS (openssl/gnutls/libtls/mbedtls); omitiendo" >&2
+                if [[ "$libs" == *"openssl"* ]]; then
+                    echo "[WARN] schannel entra en conflicto con openssl; omitiendo" >&2
                 else
                     flags+=" --enable-schannel"
                 fi
-                ;;
-            gmp)
-                if pkg_exists gmp; then
-                    flags+=" --enable-gmp"
-                else
-                    echo "[WARN] gmp no encontrado; omitiendo" >&2
-                fi
-                ;;
-            amf)
-                flags+=" --enable-amf"
                 ;;
             *)
                 echo "[WARN] Libreria desconocida '$lib' en target $target" >&2

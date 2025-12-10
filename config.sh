@@ -1,17 +1,17 @@
 FFMPEG_VERSION=8.0.1
 EXTRA_VERSION="vidra_build-chomusuke.dev"
 
-# Librerías comunes (cruzadas y ya soportadas en Android/Linux/Windows)
-LIBS_COMMON="x264 zlib brotli openssl libxml2 freetype harfbuzz fribidi fontconfig libass libmp3lame opus libvorbis twolame libdav1d libvpx libwebp libopenjpeg zimg libsoxr"
+# Librerías comunes (All en libraries.md)
+LIBS_COMMON="x264 zlib brotli openssl libxml2 freetype harfbuzz fribidi libass libmp3lame opus libdav1d libvpx libwebp libopenjpeg zimg libsoxr"
 
-# Extras específicos de Linux (aceleración y códecs/filtros ampliados)
-LIBS_LINUX="libvmaf libplacebo chromaprint frei0r libsnappy libx265 libsvtav1 libssh vaapi vulkan opencl libvpl nvcodec"
+# Extras Linux (solo Linux en libraries.md o compartidas Windows|Linux)
+LIBS_LINUX="fontconfig libx265 libsvtav1 libsnappy libssh libvpl vaapi vulkan opencl nvcodec"
 
-# Extras específicos de Android (solo los que tenemos recetas y toolchain probada)
+# Extras Android (solo Android en libraries.md)
 LIBS_ANDROID="mediacodec jni"
 
-# Librerías específicas de Windows (alineadas con MSYS2 estático; sin libplacebo)
-LIBS_WINDOWS="dxva2 d3d11va schannel libx265 libsvtav1 chromaprint libssh libsnappy"
+# Extras Windows (solo Windows en libraries.md o compartidas Windows|Linux)
+LIBS_WINDOWS="schannel dxva2 d3d11va fontconfig libx265 libsvtav1 libsnappy libssh libvpl nvcodec"
 
 # arm arm-v7n armv7-a armeabi-v7a arm64-v8a i686 x86 x86_64 native "armeabi-v7a arm64-v8a x86 x86_64"
 ANDROID_ABIS="x86_64"
