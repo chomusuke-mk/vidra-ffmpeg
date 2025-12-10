@@ -310,7 +310,7 @@ function ffmpeg_feature_flags {
                 if command -v nvcc >/dev/null 2>&1; then
                     # Silence header prep stdout to keep feature flag capture clean; errors will still abort.
                     prepare_nvcodec_headers >/dev/null
-                    flags+=" --enable-ffnvcodec --enable-nvenc --enable-cuda-llvm"
+                    flags+=" --enable-ffnvcodec --enable-nvenc"
                 else
                     echo "[WARN] nvcodec requiere nvcc; omitiendo NVENC" >&2
                 fi

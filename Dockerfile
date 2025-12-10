@@ -3,17 +3,27 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 ARG ANDROID_NDK_VERSION=r27b
 
+ENV CUDA_HOME=/usr/local/cuda
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV PATH=${CUDA_HOME}/bin:/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
 ENV ANDROID_NDK_HOME=/opt/android-ndk \
   NDK=/opt/android-ndk \
-  PATH=/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH \
   MINGW_SUPPRESS_WARNINGS="-Wno-dangling-pointer -Wno-stringop-overflow -Wno-array-bounds"
 
 RUN apt-get update && apt-get install -y \
   build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
   autoconf automake libtool libtool-bin cmake ninja-build \
   python3 python3-pip zstd \
-  libva-dev libdrm-dev \
+  libva-dev libdrm-dev gnupg clang llvm \
   mingw-w64 g++-mingw-w64 gcc-mingw-w64 \
+  && rm -rf /var/lib/apt/lists/*
+
+# Instala el toolkit de CUDA para habilitar nvcc (soporte NVENC/CUDA en builds).
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb \
+  && dpkg -i /tmp/cuda-keyring.deb \
+  && rm /tmp/cuda-keyring.deb \
+  && apt-get update \
+  && apt-get install -y cuda-toolkit-12-6 \
   && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /build/sources /build/dist /output
