@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         ANDROID_NDK_VERSION: r27b
-    image: vidra-ffmpeg:latest
+    image: javiermk/vidra-ffmpeg:latest
     environment:
       - ANDROID_NDK_HOME=/opt/android-ndk
       - NDK=/opt/android-ndk
