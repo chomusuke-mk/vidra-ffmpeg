@@ -9,7 +9,7 @@ function prepare_win_sysroot {
     local marker="$WIN_SYSROOT/.vidra-msys2.ready"
     local sanity_pcs=(
         "$WIN_SYSROOT/lib/pkgconfig/libxml-2.0.pc"
-        "$WIN_SYSROOT/lib/pkgconfig/librist.pc"
+        "$WIN_SYSROOT/lib/pkgconfig/libvpl.pc"
     )
     local missing=0
     for pc in "${sanity_pcs[@]}"; do

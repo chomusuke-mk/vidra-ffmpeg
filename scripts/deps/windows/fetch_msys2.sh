@@ -10,7 +10,7 @@ SYSROOT="$SYSROOT_BASE/mingw64"
 MARKER="$SYSROOT/.vidra-msys2.ready"
 TMP_DIR=${TMP_DIR:-"/tmp/msys2-pkgs"}
 
-# Lista de paquetes necesarios (alcanza flags actuales en ffmpeg_feature_flags).
+# Lista de paquetes necesarios (alineada con libraries.md y config.sh vigentes).
 PKGS=(
   # Bases requeridas por varios .pc (freetype/fontconfig/harfbuzz)
   mingw-w64-x86_64-bzip2
@@ -23,45 +23,30 @@ PKGS=(
   mingw-w64-x86_64-glib2
   mingw-w64-x86_64-libunibreak
   mingw-w64-x86_64-libogg
-  mingw-w64-x86_64-fftw
-  mingw-w64-x86_64-libsamplerate
-  mingw-w64-x86_64-cjson
-  mingw-w64-x86_64-mbedtls
-  mingw-w64-x86_64-libsodium
-  mingw-w64-x86_64-shaderc
-  mingw-w64-x86_64-spirv-cross
-  mingw-w64-x86_64-spirv-tools
-  mingw-w64-x86_64-vulkan-headers
-  mingw-w64-x86_64-vulkan-loader
-  mingw-w64-x86_64-lcms2
-  mingw-w64-x86_64-libdovi
 
   mingw-w64-x86_64-zlib
   mingw-w64-x86_64-libpng
+  mingw-w64-x86_64-libiconv
   mingw-w64-x86_64-freetype
   mingw-w64-x86_64-harfbuzz
   mingw-w64-x86_64-fribidi
   mingw-w64-x86_64-fontconfig
   mingw-w64-x86_64-libass
   mingw-w64-x86_64-libsoxr
-  mingw-w64-x86_64-rubberband
-  mingw-w64-x86_64-vid.stab
   mingw-w64-x86_64-lame
   mingw-w64-x86_64-opus
-  mingw-w64-x86_64-libvorbis
-  mingw-w64-x86_64-twolame
-  mingw-w64-x86_64-aom
   mingw-w64-x86_64-dav1d
   mingw-w64-x86_64-libvpx
   mingw-w64-x86_64-libwebp
   mingw-w64-x86_64-openjpeg2
   mingw-w64-x86_64-zimg
-  mingw-w64-x86_64-vmaf
-  mingw-w64-x86_64-libplacebo
-  mingw-w64-x86_64-srt
+  mingw-w64-x86_64-snappy
+  mingw-w64-x86_64-libssh
+  mingw-w64-x86_64-x265
+  mingw-w64-x86_64-svt-av1
   mingw-w64-x86_64-openssl
-  mingw-w64-x86_64-libiconv
   mingw-w64-x86_64-libxml2
+  mingw-w64-x86_64-onevpl
 )
 
 log(){ echo "[win-deps] $*"; }

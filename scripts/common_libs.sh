@@ -175,14 +175,31 @@ function collect_target_libs {
 }
 
 function prepare_nvcodec_headers {
-    if [ -d "$SRC_ROOT/nv-codec-headers/.git" ]; then
-        return
+    local install_prefix="/usr/local"
+    local mingw_prefix="/usr/x86_64-w64-mingw32/mingw64"
+
+    # Prefer installing into the mingw sysroot when building Windows targets.
+    if [ -d "$mingw_prefix/include" ]; then
+        install_prefix="$mingw_prefix"
+    elif [ -d "/usr/x86_64-w64-mingw32/include" ]; then
+        install_prefix="/usr/x86_64-w64-mingw32"
     fi
-    echo "--- Descargando nv-codec-headers (para NVENC/CUDA) ---"
-    git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers "$SRC_ROOT/nv-codec-headers"
-    pushd "$SRC_ROOT/nv-codec-headers" >/dev/null
-    make -j"$(nproc)" && make install
-    popd >/dev/null
+
+    local header_path="$install_prefix/include/ffnvcodec/nvEncodeAPI.h"
+
+    if [ ! -d "$SRC_ROOT/nv-codec-headers/.git" ]; then
+        echo "--- Descargando nv-codec-headers (para NVENC/CUDA) ---"
+        rm -rf "$SRC_ROOT/nv-codec-headers"
+        git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers "$SRC_ROOT/nv-codec-headers"
+    fi
+
+    # Ensure headers are installed where the cross compiler will look for them.
+    if [ ! -f "$header_path" ]; then
+        pushd "$SRC_ROOT/nv-codec-headers" >/dev/null
+        make -j"$(nproc)" >/dev/null
+        make install PREFIX="$install_prefix" >/dev/null
+        popd >/dev/null
+    fi
 }
 
 function ffmpeg_feature_flags {
@@ -286,15 +303,17 @@ function ffmpeg_feature_flags {
                 add_flag_if_pkg "--enable-libssh" "libssh"
                 ;;
             libvpl)
-                add_flag_if_pkg "--enable-libvpl" "libvpl"
+                add_flag_if_pkg "--enable-libvpl" "libvpl" libvpl vpl onevpl oneVPL
                 ;;
             nvcodec)
-                if [ ! -d "/usr/local/cuda" ] && ! command -v nvcc >/dev/null 2>&1; then
-                    echo "[WARN] CUDA toolkit no presente; omitiendo nvcodec" >&2
-                    continue
+                # Only enable NVENC when the CUDA toolkit is present (nvcc available).
+                if command -v nvcc >/dev/null 2>&1; then
+                    # Silence header prep stdout to keep feature flag capture clean; errors will still abort.
+                    prepare_nvcodec_headers >/dev/null
+                    flags+=" --enable-ffnvcodec --enable-nvenc --enable-cuda-llvm"
+                else
+                    echo "[WARN] nvcodec requiere nvcc; omitiendo NVENC" >&2
                 fi
-                prepare_nvcodec_headers
-                flags+=" --enable-ffnvcodec --enable-nvenc --enable-cuda-llvm"
                 ;;
             vaapi)
                 if pkg-config --exists libva 2>/dev/null; then
