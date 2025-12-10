@@ -15,3 +15,6 @@ LIBS_WINDOWS="schannel dxva2 d3d11va fontconfig libx265 libsvtav1 libsnappy libs
 
 # arm arm-v7n armv7-a armeabi-v7a arm64-v8a i686 x86 x86_64 native "armeabi-v7a arm64-v8a x86 x86_64"
 ANDROID_ABIS="x86_64"
+
+# builds full, standard
+FFMPEG_BUILDS="standard full"
