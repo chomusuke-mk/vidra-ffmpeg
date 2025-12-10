@@ -10,6 +10,11 @@ FFMPEG_LIBS_COMMON=""
 FFMPEG_LIBS_LINUX=""
 FFMPEG_LIBS_WINDOWS=""
 FFMPEG_LIBS_ANDROID=""
+FFMPEG_LIBS_COMMON_EXTENDED=""
+FFMPEG_LIBS_LINUX_EXTENDED=""
+FFMPEG_LIBS_WINDOWS_EXTENDED=""
+FFMPEG_LIBS_ANDROID_EXTENDED=""
+FFMPEG_BUILDS_LIST="standard"
 ANDROID_ABIS="arm64-v8a"
 
 # Paquetes base reutilizables para todos los SO; solo se descargan (no se compilan).
@@ -74,8 +79,16 @@ function load_config {
     FFMPEG_LIBS_LINUX=${LIBS_LINUX:-}
     FFMPEG_LIBS_WINDOWS=${LIBS_WINDOWS:-}
     FFMPEG_LIBS_ANDROID=${LIBS_ANDROID:-}
+    FFMPEG_LIBS_COMMON_EXTENDED=${LIBS_COMMON_EXTENDED:-}
+    FFMPEG_LIBS_LINUX_EXTENDED=${LIBS_LINUX_EXTENDED:-}
+    FFMPEG_LIBS_WINDOWS_EXTENDED=${LIBS_WINDOWS_EXTENDED:-}
+    FFMPEG_LIBS_ANDROID_EXTENDED=${LIBS_ANDROID_EXTENDED:-}
     ANDROID_ABIS=${ANDROID_ABIS:-$ANDROID_ABIS}
     FFMPEG_EXTRA_VERSION=${EXTRA_VERSION:-$FFMPEG_EXTRA_VERSION}
+    FFMPEG_BUILDS_LIST=${FFMPEG_BUILDS:-$FFMPEG_BUILDS_LIST}
+    if [ -z "$FFMPEG_BUILDS_LIST" ]; then
+        FFMPEG_BUILDS_LIST="standard"
+    fi
 
     # Provide a default set of warning suppressions for mingw unless the user overrides it.
     MINGW_SUPPRESS_WARNINGS=${MINGW_SUPPRESS_WARNINGS:-$MINGW_SUPPRESS_DEFAULT}
@@ -100,7 +113,7 @@ function ensure_sources {
     fi
 
     # Prefetch bundles comunes reutilizables entre OS/ABIs para evitar descargas por separado.
-    local requested_libs=" $FFMPEG_LIBS_COMMON $FFMPEG_LIBS_LINUX $FFMPEG_LIBS_WINDOWS $FFMPEG_LIBS_ANDROID "
+    local requested_libs=" $FFMPEG_LIBS_COMMON $FFMPEG_LIBS_LINUX $FFMPEG_LIBS_WINDOWS $FFMPEG_LIBS_ANDROID $FFMPEG_LIBS_COMMON_EXTENDED $FFMPEG_LIBS_LINUX_EXTENDED $FFMPEG_LIBS_WINDOWS_EXTENDED $FFMPEG_LIBS_ANDROID_EXTENDED "
     for bundle in "${COMMON_SRC_BUNDLES[@]}"; do
         IFS="|" read -r name _ url <<<"$bundle"
         if [[ "$requested_libs" != *" $name "* ]]; then
@@ -131,20 +144,37 @@ function build_x264 {
 
 function collect_target_libs {
     local target=$1
+    local variant=${2:-standard}
     local libs="$FFMPEG_LIBS_COMMON"
+    local extended="$FFMPEG_LIBS_COMMON_EXTENDED"
+
+    case "$variant" in
+        standard|full) ;;
+        *)
+            echo "[WARN] Variante desconocida '$variant'; usando 'standard'" >&2
+            variant="standard"
+            ;;
+    esac
 
     case "$target" in
         linux)
             libs="$libs $FFMPEG_LIBS_LINUX"
+            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_LINUX_EXTENDED"
             ;;
         windows)
             libs="$libs $FFMPEG_LIBS_WINDOWS"
+            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_WINDOWS_EXTENDED"
             ;;
         android)
             # Para Android habilitamos comunes + específicos (los faltantes se avisan vía pkg-config).
             libs="$libs $FFMPEG_LIBS_ANDROID"
+            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_ANDROID_EXTENDED"
             ;;
     esac
+
+    if [ "$variant" = "full" ]; then
+        libs="$libs $extended"
+    fi
 
     # TLS backend rules:
     # - schannel is Windows-only; drop it on other platforms.
@@ -359,5 +389,14 @@ function ffmpeg_feature_flags {
 function ffmpeg_extra_version_flag {
     if [ -n "${FFMPEG_EXTRA_VERSION:-}" ]; then
         echo "--extra-version=${FFMPEG_EXTRA_VERSION}"
+    fi
+}
+
+function version_dir_for_variant {
+    local variant=${1:-standard}
+    if [ "$variant" = "full" ]; then
+        echo "${FFMPEG_VER}-full"
+    else
+        echo "${FFMPEG_VER}"
     fi
 }

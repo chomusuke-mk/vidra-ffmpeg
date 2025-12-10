@@ -79,17 +79,10 @@ EOF
     chmod +x "$pkgconf_wrapper"
     export PKG_CONFIG="$pkgconf_wrapper"
 
-    local libs feature_flags extra_version_flag output_dir
-    libs=$(collect_target_libs "windows")
-    feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
-    if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
-        echo "[win-deps] ERROR: No se resolvieron flags para las libs solicitadas ($libs). Revisa pkg-config paths y sysroot." >&2
-        exit 1
-    fi
+    local extra_version_flag
     extra_version_flag=$(ffmpeg_extra_version_flag)
-    output_dir="/output/${FFMPEG_VER}/windows"
 
-    mkdir -p "$PREFIX" "$PREFIX/lib" "$output_dir"
+    mkdir -p "$PREFIX" "$PREFIX/lib"
 
     # Small shim to provide stat64/wstat64 aliases expected by some static libs (e.g. libxml2)
     local compat_src=/tmp/compat_stat64.c
@@ -137,28 +130,45 @@ EOF
 
     build_x264 "x86_64-w64-mingw32" "$PREFIX" "--cross-prefix=${CROSS_PREFIX} --disable-asm"
 
-    cd /build/sources/ffmpeg-$FFMPEG_VER
-    ./configure \
-        --target-os=mingw32 \
-        --arch=x86_64 \
-        --cross-prefix=$CROSS_PREFIX \
-        --prefix=$PREFIX \
-        --pkg-config=$PKG_CONFIG \
-        --pkg-config-flags="--static" \
-        --enable-gpl \
-        --enable-version3 \
-        --disable-w32threads \
-        --enable-pthreads \
-        ${extra_version_flag:+$extra_version_flag} \
-        --enable-static --disable-shared \
-        --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
-        --disable-ffplay\
-        --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC -Wno-maybe-uninitialized -Wno-unknown-pragmas ${MINGW_SUPPRESS_WARNINGS:-}" \
-        --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
-        --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
-        $feature_flags
+    for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
+        echo "[win] Build variant: $build_variant"
 
-    make -j$(nproc)
+        local libs feature_flags version_dir output_dir
+        libs=$(collect_target_libs "windows" "$build_variant")
+        feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
+        if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
+            echo "[win-deps] ERROR: No se resolvieron flags para las libs solicitadas ($libs). Revisa pkg-config paths y sysroot." >&2
+            exit 1
+        fi
 
-    cp ffmpeg.exe "$output_dir/ffmpeg.exe"
+        version_dir=$(version_dir_for_variant "$build_variant")
+        output_dir="/output/${version_dir}/windows"
+        mkdir -p "$output_dir"
+
+        cd /build/sources/ffmpeg-$FFMPEG_VER
+        make distclean >/dev/null 2>&1 || true
+        ./configure \
+            --target-os=mingw32 \
+            --arch=x86_64 \
+            --cross-prefix=$CROSS_PREFIX \
+            --prefix=$PREFIX \
+            --pkg-config=$PKG_CONFIG \
+            --pkg-config-flags="--static" \
+            --enable-gpl \
+            --enable-version3 \
+            --disable-w32threads \
+            --enable-pthreads \
+            ${extra_version_flag:+$extra_version_flag} \
+            --enable-static --disable-shared \
+            --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
+            --disable-ffplay\
+            --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC -Wno-maybe-uninitialized -Wno-unknown-pragmas ${MINGW_SUPPRESS_WARNINGS:-}" \
+            --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
+            --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
+            $feature_flags
+
+        make -j$(nproc)
+
+        cp ffmpeg.exe "$output_dir/ffmpeg.exe"
+    done
 }

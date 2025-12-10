@@ -435,8 +435,7 @@ function build_android {
 
     API=24
     TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64
-    local libs feature_flags extra_version_flag
-    libs=$(collect_target_libs "android")
+    local extra_version_flag
     extra_version_flag=$(ffmpeg_extra_version_flag)
 
     mkdir -p /output
@@ -510,49 +509,55 @@ function build_android {
         build_android_render_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT"
         build_android_media_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT" "$TARGET_HOST"
 
-        # Re-evaluate feature flags now that pkg-config files exist for this ABI.
-        feature_flags=$(ffmpeg_feature_flags "android" "$libs")
-
         build_x264 "$TARGET_HOST" "$PREFIX" "--cross-prefix=$TOOLCHAIN/bin/llvm- --disable-asm --enable-pic --disable-cli"
 
-        echo "--- Compilando FFmpeg (Android $ABI) ---"
-        cd /build/sources/ffmpeg-$FFMPEG_VER
+        for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
+            echo "[android:$ABI] Build variant: $build_variant"
 
-        make distclean || true
+            local libs feature_flags version_dir output_dir
+            libs=$(collect_target_libs "android" "$build_variant")
+            feature_flags=$(ffmpeg_feature_flags "android" "$libs")
 
-        ./configure \
-            --prefix=$PREFIX \
-            --target-os=android \
-            --arch=$ARCH \
-            ${CPU:+--cpu=$CPU} \
-            --cc=$CC \
-            --cxx=$CXX \
-            --ar=$AR \
-            --ranlib=$RANLIB \
-            --strip=$STRIP \
-            --enable-cross-compile \
-            --pkg-config-flags="--static" \
-            --extra-libs="-lm -Wl,-Bstatic -lc++_static -Wl,-Bdynamic -latomic" \
-            --enable-static \
-            --disable-shared \
-            --enable-gpl \
-            --enable-version3 \
-            --disable-debug \
-            --disable-doc \
-            --disable-ffplay \
-            --enable-neon \
-            $arch_extra_flags \
-            ${extra_version_flag:+$extra_version_flag} \
-            $feature_flags
+            echo "--- Compilando FFmpeg (Android $ABI) ---"
+            cd /build/sources/ffmpeg-$FFMPEG_VER
 
-        # Force static libc++ so ffmpeg does not depend on libc++_shared.so
-        sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
+            make distclean || true
 
-        make -j$(nproc)
+            ./configure \
+                --prefix=$PREFIX \
+                --target-os=android \
+                --arch=$ARCH \
+                ${CPU:+--cpu=$CPU} \
+                --cc=$CC \
+                --cxx=$CXX \
+                --ar=$AR \
+                --ranlib=$RANLIB \
+                --strip=$STRIP \
+                --enable-cross-compile \
+                --pkg-config-flags="--static" \
+                --extra-libs="-lm -Wl,-Bstatic -lc++_static -Wl,-Bdynamic -latomic" \
+                --enable-static \
+                --disable-shared \
+                --enable-gpl \
+                --enable-version3 \
+                --disable-debug \
+                --disable-doc \
+                --disable-ffplay \
+                --enable-neon \
+                $arch_extra_flags \
+                ${extra_version_flag:+$extra_version_flag} \
+                $feature_flags
 
-        output_dir="/output/${FFMPEG_VER}/android/$ABI"
-        mkdir -p "$output_dir"
-        cp ffmpeg "$output_dir/ffmpeg"
-        echo "Hecho. Para probarlo en Android usa: adb push $output_dir/ffmpeg /data/local/tmp/"
+            # Force static libc++ so ffmpeg does not depend on libc++_shared.so
+            sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
+
+            make -j$(nproc)
+
+            version_dir=$(version_dir_for_variant "$build_variant")
+            output_dir="/output/${version_dir}/android/$ABI"
+            mkdir -p "$output_dir"
+            cp ffmpeg "$output_dir/ffmpeg"
+            echo "Hecho. Para probarlo en Android usa: adb push $output_dir/ffmpeg /data/local/tmp/"
+        done
     done
 }
