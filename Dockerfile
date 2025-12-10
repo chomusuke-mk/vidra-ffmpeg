@@ -1,3 +1,4 @@
+# check=skip=UndefinedVar
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
