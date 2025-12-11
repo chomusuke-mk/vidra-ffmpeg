@@ -459,8 +459,6 @@ function build_android {
 
     API=24
     TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64
-    local extra_version_flag
-    extra_version_flag=$(ffmpeg_extra_version_flag)
 
     mkdir -p /output
 
@@ -540,9 +538,10 @@ function build_android {
         for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
             echo "[android:$ABI] Build variant: $build_variant"
 
-            local libs feature_flags version_dir output_dir
+            local libs feature_flags version_dir output_dir extra_version_flag
             libs=$(collect_target_libs "android" "$build_variant")
             feature_flags=$(ffmpeg_feature_flags "android" "$libs")
+            extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
 
             echo "--- Compilando FFmpeg (Android $ABI) ---"
             cd /build/sources/ffmpeg-$FFMPEG_VER

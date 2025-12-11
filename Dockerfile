@@ -17,6 +17,10 @@ RUN apt-get update && apt-get install -y \
   python3 python3-pip zstd \
   libva-dev libdrm-dev gnupg clang llvm \
   mingw-w64 g++-mingw-w64 gcc-mingw-w64 \
+  libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev libass-dev \
+  libdav1d-dev libmp3lame-dev libopenjp2-7-dev libsnappy-dev libsoxr-dev libssh-dev \
+  libsvtav1-dev libvpl-dev libvpx-dev libwebp-dev libx265-dev libxml2-dev libopus-dev \
+  libvulkan-dev zlib1g-dev libzimg-dev libssl-dev ocl-icd-opencl-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Instala el toolkit de CUDA para habilitar nvcc (soporte NVENC/CUDA en builds).

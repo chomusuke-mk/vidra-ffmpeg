@@ -14,9 +14,6 @@ function build_linux {
     export CFLAGS="-O3 -static"
     export LDFLAGS="-static"
 
-    local extra_version_flag
-    extra_version_flag=$(ffmpeg_extra_version_flag)
-
     mkdir -p "$PREFIX"
 
     echo "--- Compilando x264 ---"
@@ -25,9 +22,10 @@ function build_linux {
     for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
         echo "[linux] Build variant: $build_variant"
 
-        local libs feature_flags output_dir version_dir
+        local libs feature_flags output_dir version_dir extra_version_flag
         libs=$(collect_target_libs "linux" "$build_variant")
         feature_flags=$(ffmpeg_feature_flags "linux" "$libs")
+        extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
         version_dir=$(version_dir_for_variant "$build_variant")
         output_dir="/output/${version_dir}/linux"
 

@@ -79,9 +79,6 @@ EOF
     chmod +x "$pkgconf_wrapper"
     export PKG_CONFIG="$pkgconf_wrapper"
 
-    local extra_version_flag
-    extra_version_flag=$(ffmpeg_extra_version_flag)
-
     mkdir -p "$PREFIX" "$PREFIX/lib"
 
     # Small shim to provide stat64/wstat64 aliases expected by some static libs (e.g. libxml2)
@@ -133,7 +130,7 @@ EOF
     for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
         echo "[win] Build variant: $build_variant"
 
-        local libs feature_flags version_dir output_dir
+        local libs feature_flags version_dir output_dir extra_version_flag
         libs=$(collect_target_libs "windows" "$build_variant")
         feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
         if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
@@ -141,6 +138,7 @@ EOF
             exit 1
         fi
 
+        extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
         version_dir=$(version_dir_for_variant "$build_variant")
         output_dir="/output/${version_dir}/windows"
         mkdir -p "$output_dir"

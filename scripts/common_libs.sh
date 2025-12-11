@@ -142,6 +142,9 @@ function build_x264 {
     if [[ "$HOST" == *mingw* ]]; then
         # All warning suppressions come from MINGW_SUPPRESS_WARNINGS; Dockerfile sets the defaults.
         cflags+=" ${MINGW_SUPPRESS_WARNINGS:-$MINGW_SUPPRESS_DEFAULT}"
+    else
+        # Upstream x264 trips aggressive gcc warnings when building static; keep the build clean without touching sources.
+        cflags+=" -Wno-alloc-size-larger-than -Wno-dangling-pointer -Wno-array-bounds -Wno-unused-function"
     fi
 
     pushd "$SRC_ROOT/x264" >/dev/null
@@ -345,13 +348,13 @@ function ffmpeg_feature_flags {
                 add_flag_if_pkg "--enable-libvpl" "libvpl" libvpl vpl onevpl oneVPL
                 ;;
             nvcodec)
-                # Only enable NVENC when the CUDA toolkit is present (nvcc available).
-                if command -v nvcc >/dev/null 2>&1; then
+                # Only enable NVENC when the CUDA toolkit is present (nvcc available) and explicitly allowed.
+                if [ -n "${FFMPEG_ALLOW_NVENC:-}" ] && command -v nvcc >/dev/null 2>&1; then
                     # Silence header prep stdout to keep feature flag capture clean; errors will still abort.
                     prepare_nvcodec_headers >/dev/null
                     flags+=" --enable-ffnvcodec --enable-nvenc"
                 else
-                    echo "[WARN] nvcodec requiere nvcc; omitiendo NVENC" >&2
+                    echo "[WARN] nvcodec omitido (set FFMPEG_ALLOW_NVENC=1 y provee CUDA para habilitarlo)" >&2
                 fi
                 ;;
             vaapi)
@@ -396,8 +399,17 @@ function ffmpeg_feature_flags {
 }
 
 function ffmpeg_extra_version_flag {
-    if [ -n "${FFMPEG_EXTRA_VERSION:-}" ]; then
-        echo "--extra-version=${FFMPEG_EXTRA_VERSION}"
+    local variant=${1:-}
+    local extra=${FFMPEG_EXTRA_VERSION:-}
+
+    if [ "$variant" = "full" ]; then
+        if [ -n "$extra" ]; then
+            echo "--extra-version=full-$extra"
+        else
+            echo "--extra-version=full"
+        fi
+    elif [ -n "$extra" ]; then
+        echo "--extra-version=${extra}"
     fi
 }
 
