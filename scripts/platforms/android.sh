@@ -58,8 +58,25 @@ build_android_base_libs() {
     fi
     ( cd "$SRC/openssl-$OPENSSL_VER" && make distclean >/dev/null 2>&1 || true
         export ANDROID_NDK_HOME=$NDK ANDROID_NDK=$NDK PATH="$TOOLCHAIN/bin:$PATH" ANDROID_API=$API
-        ./Configure android-$ABI --prefix=$PREFIX --openssldir=$PREFIX/ssl no-shared no-dso no-tests no-asm
+        # Avoid glibc-only fortified sendto/__sendto_chk when targeting Bionic by wiping the global fortify flags here.
+        export CFLAGS="-fPIE -fPIC -O2" CPPFLAGS="" LDFLAGS="-fPIE -pie"
+        ./Configure android-$ABI --prefix=$PREFIX --openssldir=$PREFIX/ssl no-shared no-dso no-tests no-asm no-apps
         make -j"$(nproc)" && make install_sw )
+
+    # Ensure FFmpeg sees OpenSSL 3.x via pkg-config when GPL is enabled.
+    mkdir -p "$PREFIX/lib/pkgconfig"
+    cat > "$PREFIX/lib/pkgconfig/openssl.pc" <<EOF
+prefix=$PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: OpenSSL
+Description: OpenSSL cryptography and SSL/TLS toolkit
+Version: $OPENSSL_VER
+Libs: -L\${libdir} -lssl -lcrypto
+Cflags: -I\${includedir}
+EOF
 
     # expat
     local EXPAT_VER=2.6.4
@@ -198,7 +215,14 @@ build_android_media_libs() {
         local tarball="/tmp/${name}.tar"
         echo "--- Downloading $name $ver ---"
         rm -f "$tarball"
-        if ! curl -fL --retry 3 --retry-delay 1 "$url" -o "$tarball"; then
+        if ! curl -fL --retry 5 --retry-delay 2 --retry-all-errors "$url" -o "$tarball"; then
+            if [ "$name" = "vid.stab" ]; then
+                echo "[WARN] Tarball fetch failed; trying git clone for $name $ver" >&2
+                rm -rf "$SRC/${name}-${ver}"
+                if git clone --depth 1 --branch "v${ver}" https://github.com/georgmartius/vid.stab.git "$SRC/${name}-${ver}"; then
+                    return 0
+                fi
+            fi
             echo "[ERROR] Failed to download $name from $url" >&2
             return 1
         fi
@@ -353,7 +377,7 @@ EOF
     ( cd "$SRC/zimg-release-3.0.5" && make distclean >/dev/null 2>&1 || true
         ./autogen.sh
         CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" \
-            CFLAGS="$CFLAGS" CXXFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" \
+            CFLAGS="$CFLAGS" CXXFLAGS="${CXXFLAGS:-$CFLAGS}" LDFLAGS="$LDFLAGS" \
             ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic
         make -j"$(nproc)" && make install )
 
@@ -386,7 +410,7 @@ EOF
             -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
             -DCMAKE_C_FLAGS="$CFLAGS -Wno-deprecated-declarations" \
-            -DCMAKE_CXX_FLAGS="$CFLAGS -Wno-deprecated-declarations" \
+            -DCMAKE_CXX_FLAGS="$CXXFLAGS -Wno-deprecated-declarations" \
             -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DENABLE_TESTING=OFF \
             -DUSE_OPENSSL_PC=ON -DENABLE_C_DEPS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
         make -j"$(nproc)" && make install )
@@ -406,19 +430,19 @@ EOF
     ensure_meson
     fetch_src "dav1d" "1.4.2" "https://code.videolan.org/videolan/dav1d/-/archive/1.4.2/dav1d-1.4.2.tar.bz2"
     meson_cross_file
-    ( cd "$SRC/dav1d-1.4.2" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && \
-        ( meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
-            --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
-            || { echo "[WARN] meson setup failed; wiping and retrying" >&2; \
-                 rm -rf build-android-$ABI && mkdir -p build-android-$ABI && sleep 1 && \
-                 meson setup build-android-$ABI --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
-                    --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
-                 || { echo "[WARN] meson setup still failing; touching coredata and retrying" >&2; \
-                      touch build-android-$ABI/meson-private/coredata.dat 2>/dev/null || true; sleep 1; \
+        ( cd "$SRC/dav1d-1.4.2" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && sleep 1 && \
+            ( meson setup build-android-$ABI --prefix="$PREFIX" --buildtype=release --default-library=static \
+                --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
+                || { echo "[WARN] meson setup failed; wiping and retrying" >&2; \
+                      rm -rf build-android-$ABI && mkdir -p build-android-$ABI && sleep 1 && \
                       meson setup build-android-$ABI --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
-                        --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false; }; } ) && \
-        touch build-android-$ABI/meson-private/coredata.dat && \
-        ninja -C build-android-$ABI install )
+                          --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false \
+                      || { echo "[WARN] meson setup still failing; touching coredata and retrying" >&2; \
+                             touch build-android-$ABI/meson-private/coredata.dat 2>/dev/null || true; sleep 1; \
+                             meson setup build-android-$ABI --wipe --prefix="$PREFIX" --buildtype=release --default-library=static \
+                                --cross-file /tmp/meson-${ABI}.ini -Denable_tests=false -Denable_tools=false -Denable_examples=false; }; } ) && \
+          touch build-android-$ABI/meson-private/coredata.dat && sleep 1 && \
+          ninja -C build-android-$ABI install )
 }
 
 function build_android {
@@ -496,7 +520,9 @@ function build_android {
         export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
         export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
         # Suppress noisy upstream deprecation/const-conversion warnings for cleaner Android logs.
-        export CFLAGS="-fPIE -fPIC -std=gnu11 -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-maybe-uninitialized -I$PREFIX/include"
+        export CFLAGS="-fPIE -fPIC -std=gnu11 -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wno-deprecated-declarations -Wno-implicit-const-int-float-conversion -Wno-implicit-int-float-conversion -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-uninitialized -Wno-conditional-uninitialized -I$PREFIX/include"
+        # Match the C flags but use a C++-appropriate standard so C++ builds (e.g., zimg) do not choke on -std=gnu11.
+        export CXXFLAGS="${CFLAGS/-std=gnu11/-std=gnu++17}"
         export CPPFLAGS="-I$PREFIX/include"
         libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}/${API}"
         [ -d "$libcxx_dir" ] || libcxx_dir="$TOOLCHAIN/sysroot/usr/lib/${stl_triple}"
