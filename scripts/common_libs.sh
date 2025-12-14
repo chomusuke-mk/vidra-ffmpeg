@@ -32,6 +32,14 @@ MINGW_SUPPRESS_DEFAULT=""
 
 SRC_ROOT="/build/sources"
 
+# SVT-AV1 (libsvtav1): Ubuntu 24.04 puede no proveer la librería/pc, solo headers.
+# El repo canónico está en GitLab; el de GitHub es solo un stub.
+SVTAV1_REF=${SVTAV1_REF:-v2.3.0}
+
+# Vulkan: FFmpeg 8.x requiere vulkan >= 1.3.277. Ubuntu 24.04 trae 1.3.275,
+# así que para habilitarlo instalamos un loader+headers más nuevos en el PREFIX.
+VULKAN_SDK_REF=${VULKAN_SDK_REF:-vulkan-sdk-1.3.280.0}
+
 function _fetch_source_bundle {
     local bundle=$1
     IFS="|" read -r name ver url <<<"$bundle"
@@ -154,6 +162,126 @@ function build_x264 {
     popd >/dev/null
 }
 
+function build_svtav1 {
+    # Recibe argumentos: $PREFIX
+    local PREFIX=$1
+
+    # Skip if already installed.
+    if [ -f "$PREFIX/lib/libSvtAv1Enc.a" ] || [ -f "$PREFIX/lib64/libSvtAv1Enc.a" ]; then
+        return
+    fi
+
+    # Ensure we have the real upstream checkout (GitHub mirror can be a stub).
+    if [ -d "$SRC_ROOT/svt-av1/.git" ] && [ ! -f "$SRC_ROOT/svt-av1/CMakeLists.txt" ]; then
+        rm -rf "$SRC_ROOT/svt-av1"
+    fi
+
+    if [ ! -d "$SRC_ROOT/svt-av1/.git" ]; then
+        echo "--- Descargando SVT-AV1 ($SVTAV1_REF) ---"
+        rm -rf "$SRC_ROOT/svt-av1"
+        git clone --depth 1 --branch "$SVTAV1_REF" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SRC_ROOT/svt-av1"
+    fi
+
+    echo "--- Compilando SVT-AV1 ---"
+    pushd "$SRC_ROOT/svt-av1" >/dev/null
+    rm -rf build
+    cmake -S . -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+        -DBUILD_SHARED_LIBS=OFF
+    cmake --build build -j"$(nproc)"
+    cmake --install build
+
+    # FFmpeg (configure) no siempre utiliza Libs.private al testear, pero como
+    # instalamos libSvtAv1Enc.a (estático) necesitamos exponer deps como -lm y -lpthread
+    # en Libs para que el test de enlace y el link final funcionen.
+    local upstream_pc=""
+    if [ -f "$PREFIX/lib/pkgconfig/SvtAv1Enc.pc" ]; then
+        upstream_pc="$PREFIX/lib/pkgconfig/SvtAv1Enc.pc"
+    elif [ -f "$PREFIX/lib64/pkgconfig/SvtAv1Enc.pc" ]; then
+        upstream_pc="$PREFIX/lib64/pkgconfig/SvtAv1Enc.pc"
+    fi
+
+    if [ -n "$upstream_pc" ]; then
+        if ! grep -qE '^Libs:.*(^|[[:space:]])-lm([[:space:]]|$)' "$upstream_pc"; then
+            sed -i 's/^Libs:\(.*\)$/Libs:\1 -lm/' "$upstream_pc"
+        fi
+        if ! grep -qE '^Libs:.*(^|[[:space:]])-lpthread([[:space:]]|$)' "$upstream_pc"; then
+            sed -i 's/^Libs:\(.*\)$/Libs:\1 -lpthread/' "$upstream_pc"
+        fi
+    fi
+
+    # Algunos empaquetados no instalan .pc; genera uno mínimo si falta.
+    local pcdir="$PREFIX/lib/pkgconfig"
+    mkdir -p "$pcdir"
+    if [ ! -f "$pcdir/SvtAv1Enc.pc" ]; then
+        local ver="0"
+        ver=$(git rev-parse --short HEAD 2>/dev/null || echo 0)
+        cat >"$pcdir/SvtAv1Enc.pc" <<EOF
+prefix=$PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: SvtAv1Enc
+Description: SVT-AV1 encoder
+Version: $ver
+Libs: -L\${libdir} -lSvtAv1Enc -lm -lpthread
+Cflags: -I\${includedir}/svt-av1
+EOF
+    fi
+    popd >/dev/null
+}
+
+function build_vulkan {
+    # Recibe argumentos: $PREFIX
+    local PREFIX=$1
+
+    # Si ya existe una versión suficiente (system o PREFIX), no hagas nada.
+    local pkg_path="${PKG_CONFIG_PATH:-}"
+    if PKG_CONFIG_PATH="$pkg_path" pkg-config --exists "vulkan >= 1.3.277" 2>/dev/null; then
+        return
+    fi
+
+    echo "--- Compilando Vulkan (headers+loader) $VULKAN_SDK_REF ---"
+
+    # Vulkan-Headers
+    if [ ! -d "$SRC_ROOT/vulkan-headers/.git" ]; then
+        rm -rf "$SRC_ROOT/vulkan-headers"
+        git clone --depth 1 --branch "$VULKAN_SDK_REF" https://github.com/KhronosGroup/Vulkan-Headers.git "$SRC_ROOT/vulkan-headers"
+    fi
+
+    pushd "$SRC_ROOT/vulkan-headers" >/dev/null
+    rm -rf build
+    cmake -S . -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$PREFIX"
+    cmake --build build -j"$(nproc)"
+    cmake --install build
+    popd >/dev/null
+
+    # Vulkan-Loader
+    if [ ! -d "$SRC_ROOT/vulkan-loader/.git" ]; then
+        rm -rf "$SRC_ROOT/vulkan-loader"
+        git clone --depth 1 --branch "$VULKAN_SDK_REF" --recursive https://github.com/KhronosGroup/Vulkan-Loader.git "$SRC_ROOT/vulkan-loader"
+    fi
+
+    pushd "$SRC_ROOT/vulkan-loader" >/dev/null
+    rm -rf build
+    cmake -S . -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+        -DBUILD_WSI_XCB_SUPPORT=OFF \
+        -DBUILD_WSI_XLIB_SUPPORT=OFF \
+        -DBUILD_WSI_WAYLAND_SUPPORT=OFF \
+        -DBUILD_WSI_DIRECTFB_SUPPORT=OFF \
+        -DBUILD_TESTS=OFF \
+        -DCMAKE_PREFIX_PATH="$PREFIX"
+    cmake --build build -j"$(nproc)"
+    cmake --install build
+    popd >/dev/null
+}
+
 function collect_target_libs {
     local target=$1
     local variant=${2:-standard}
@@ -217,14 +345,19 @@ function collect_target_libs {
 }
 
 function prepare_nvcodec_headers {
-    local install_prefix="/usr/local"
+    # Opcional: fuerza el prefix (p.ej. /usr/local) para builds Linux.
+    local install_prefix="${1:-}"
     local mingw_prefix="/usr/x86_64-w64-mingw32/mingw64"
 
-    # Prefer installing into the mingw sysroot when building Windows targets.
-    if [ -d "$mingw_prefix/include" ]; then
-        install_prefix="$mingw_prefix"
-    elif [ -d "/usr/x86_64-w64-mingw32/include" ]; then
-        install_prefix="/usr/x86_64-w64-mingw32"
+    if [ -z "$install_prefix" ]; then
+        install_prefix="/usr/local"
+
+        # Prefer installing into the mingw sysroot when building Windows targets.
+        if [ -d "$mingw_prefix/include" ]; then
+            install_prefix="$mingw_prefix"
+        elif [ -d "/usr/x86_64-w64-mingw32/include" ]; then
+            install_prefix="/usr/x86_64-w64-mingw32"
+        fi
     fi
 
     local header_path="$install_prefix/include/ffnvcodec/nvEncodeAPI.h"
@@ -250,9 +383,102 @@ function ffmpeg_feature_flags {
     local flags=""
     local pkg_path="${PKG_CONFIG_PATH:-}"
     local pkg_libdir="${PKG_CONFIG_LIBDIR:-}"
+    local want_static=0
+
+    if [[ " ${LDFLAGS:-} ${FFMPEG_LDFLAGS:-} " == *" -static "* ]]; then
+        want_static=1
+    fi
 
     pkg_exists() {
-        PKG_CONFIG_PATH="$pkg_path" PKG_CONFIG_LIBDIR="$pkg_libdir" pkg-config --exists "$1" 2>/dev/null
+        # IMPORTANT: Do not set PKG_CONFIG_LIBDIR to an empty string.
+        # If PKG_CONFIG_LIBDIR is set (even empty), pkg-config treats it as an override and may ignore
+        # its built-in default search paths (e.g. /usr/lib/x86_64-linux-gnu/pkgconfig), making every
+        # system dependency look "missing".
+        if [ -n "$pkg_libdir" ]; then
+            PKG_CONFIG_PATH="$pkg_path" PKG_CONFIG_LIBDIR="$pkg_libdir" pkg-config --exists "$1" 2>/dev/null
+        else
+            PKG_CONFIG_PATH="$pkg_path" pkg-config --exists "$1" 2>/dev/null
+        fi
+    }
+
+    pkg_static_ok() {
+        local pkg_expr=$1
+        # pkg-config permite expresiones tipo: "name >= 1.2.3". Para consultas de variables/libs
+        # necesitamos el nombre base del paquete.
+        local pkg=${pkg_expr%% *}
+        [ "$want_static" -eq 0 ] && return 0
+
+        # For fully static builds, only rely on libraries we built/installed into PREFIX.
+        # Distro-provided .pc files frequently omit private deps needed for static linking.
+        local pcfiledir=""
+        pcfiledir=$(pkg-config --variable=pcfiledir "$pkg" 2>/dev/null || true)
+        if [ -n "${PREFIX:-}" ] && [ -n "$pcfiledir" ]; then
+            case "$pcfiledir" in
+                "$PREFIX"/*) ;;
+                *) return 1 ;;
+            esac
+        else
+            # If we can't identify where the .pc comes from, be conservative.
+            return 1
+        fi
+
+        # Toolchain/system libs that may not have a matching lib*.a in the same libdir.
+        local allow_missing=(c gcc_s m pthread dl rt resolv util stdc++ atomic)
+
+        local libdirs=()
+        local pc_libdir=""
+        pc_libdir=$(pkg-config --variable=libdir "$pkg" 2>/dev/null || true)
+        [ -n "$pc_libdir" ] && libdirs+=("$pc_libdir")
+
+        while IFS= read -r token; do
+            case "$token" in
+                -L*) libdirs+=("${token#-L}") ;;
+            esac
+        done < <(pkg-config --static --libs "$pkg" 2>/dev/null | tr ' ' '\n')
+
+        # Dedup
+        if [ "${#libdirs[@]}" -gt 0 ]; then
+            local dedup=()
+            local seen=""
+            for d in "${libdirs[@]}"; do
+                [[ ":$seen:" == *":$d:"* ]] && continue
+                seen+="$d:"
+                dedup+=("$d")
+            done
+            libdirs=("${dedup[@]}")
+        fi
+
+        [ "${#libdirs[@]}" -eq 0 ] && return 1
+
+        while IFS= read -r libflag; do
+            local name=${libflag#-l}
+            local allowed=0
+            for a in "${allow_missing[@]}"; do
+                if [ "$name" = "$a" ]; then
+                    allowed=1
+                    break
+                fi
+            done
+            [ "$allowed" -eq 1 ] && continue
+
+            local found=0
+            for d in "${libdirs[@]}"; do
+                if [ -f "$d/lib${name}.a" ]; then
+                    found=1
+                    break
+                fi
+            done
+            [ "$found" -eq 1 ] || return 1
+        done < <(pkg-config --static --libs-only-l "$pkg" 2>/dev/null | tr ' ' '\n')
+
+        return 0
+    }
+
+    pkg_usable() {
+        local pkg=$1
+        pkg_exists "$pkg" || return 1
+        pkg_static_ok "$pkg" || return 1
+        return 0
     }
 
     add_flag_if_pkg() {
@@ -262,7 +488,7 @@ function ffmpeg_feature_flags {
         local candidates=("$label" "$flag" "$@")
         local found=0
         for pkg in "${candidates[@]}"; do
-            if pkg_exists "$pkg"; then
+            if pkg_usable "$pkg"; then
                 flags+=" $flag"
                 found=1
                 break
@@ -282,7 +508,8 @@ function ffmpeg_feature_flags {
                 add_flag_if_pkg "--enable-libx265" "libx265" x265
                 ;;
             libsvtav1)
-                add_flag_if_pkg "--enable-libsvtav1" "libsvtav1" SvtAv1Enc svtav1
+                # FFmpeg requiere SvtAv1Enc >= 0.9.0; valida versión para evitar que configure falle.
+                add_flag_if_pkg "--enable-libsvtav1" "libsvtav1" "SvtAv1Enc >= 0.9.0" SvtAv1Enc svtav1
                 ;;
             libdav1d)
                 add_flag_if_pkg "--enable-libdav1d" "libdav1d" dav1d
@@ -348,20 +575,39 @@ function ffmpeg_feature_flags {
                 add_flag_if_pkg "--enable-libvpl" "libvpl" libvpl vpl onevpl oneVPL
                 ;;
             nvcodec)
-                # Only enable NVENC when the CUDA toolkit is present (nvcc available) and explicitly allowed.
-                if [ -n "${FFMPEG_ALLOW_NVENC:-}" ] && command -v nvcc >/dev/null 2>&1; then
-                    # Silence header prep stdout to keep feature flag capture clean; errors will still abort.
-                    prepare_nvcodec_headers >/dev/null
+                # Linux: el usuario pidió compilar con nvcodec por defecto cuando está solicitado en la lista de libs.
+                # Otros targets: mantener opt-in para evitar builds sorpresa.
+                if [ -n "${FFMPEG_DISABLE_NVENC:-}" ]; then
+                    echo "[INFO] nvcodec deshabilitado por FFMPEG_DISABLE_NVENC=1" >&2
+                elif [ "$target" = "linux" ]; then
+                    prepare_nvcodec_headers "/usr/local" >/dev/null
                     flags+=" --enable-ffnvcodec --enable-nvenc"
                 else
-                    echo "[WARN] nvcodec omitido (set FFMPEG_ALLOW_NVENC=1 y provee CUDA para habilitarlo)" >&2
+                    if [ -n "${FFMPEG_ALLOW_NVENC:-}" ]; then
+                        prepare_nvcodec_headers >/dev/null
+                        flags+=" --enable-ffnvcodec --enable-nvenc"
+                    else
+                        echo "[INFO] nvcodec omitido (set FFMPEG_ALLOW_NVENC=1 para habilitarlo)" >&2
+                    fi
                 fi
                 ;;
             vaapi)
-                if pkg-config --exists libva 2>/dev/null; then
-                    flags+=" --enable-vaapi"
+                # VAAPI suele no ser enlazable de forma 100% estática con paquetes de distro.
+                # Si estamos forzando -static, evita romper configure a menos que exista libva.a.
+                if [[ " ${LDFLAGS:-} ${FFMPEG_LDFLAGS:-} " == *" -static "* ]]; then
+                    local va_libdir=""
+                    va_libdir=$(pkg-config --variable=libdir libva 2>/dev/null || true)
+                    if [ -n "$va_libdir" ] && [ -f "$va_libdir/libva.a" ]; then
+                        flags+=" --enable-vaapi"
+                    else
+                        echo "[WARN] vaapi omitido en build estático (libva.a no disponible)" >&2
+                    fi
                 else
-                    echo "[WARN] libva no encontrado; omitiendo vaapi" >&2
+                    if pkg_exists libva; then
+                        flags+=" --enable-vaapi"
+                    else
+                        echo "[WARN] libva no encontrado; omitiendo vaapi" >&2
+                    fi
                 fi
                 ;;
             dxva2)
@@ -377,7 +623,13 @@ function ffmpeg_feature_flags {
                 flags+=" --enable-jni"
                 ;;
             vulkan)
-                add_flag_if_pkg "--enable-vulkan" "vulkan"
+                # FFmpeg 8.0.1 requiere vulkan >= 1.3.277 (VK_HEADER_VERSION >= 277).
+                # Ubuntu 24.04 trae 1.3.275, por lo que habilitarlo rompe configure.
+                if pkg_usable "vulkan >= 1.3.277"; then
+                    flags+=" --enable-vulkan"
+                else
+                    echo "[WARN] vulkan >= 1.3.277 no encontrado; omitiendo" >&2
+                fi
                 ;;
             opencl)
                 add_flag_if_pkg "--enable-opencl" "opencl" OpenCL

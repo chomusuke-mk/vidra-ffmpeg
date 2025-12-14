@@ -18,7 +18,7 @@ LIBS_ANDROID_EXTENDED="mediacodec jni"
 LIBS_WINDOWS="schannel fontconfig libx265 libsvtav1 libsnappy libssh"
 LIBS_WINDOWS_EXTENDED="libvpl nvcodec dxva2 d3d11va"
 
-# arm arm-v7n armv7-a armeabi-v7a arm64-v8a i686 x86 x86_64 native "armeabi-v7a arm64-v8a x86 x86_64"
+# ABIs soportados: armeabi-v7a, arm64-v8a, x86, x86_64.
 ANDROID_ABIS="x86_64"
 
 # builds "full standard"

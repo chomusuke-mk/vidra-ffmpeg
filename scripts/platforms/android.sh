@@ -11,7 +11,7 @@ build_android_base_libs() {
     local TARGET_HOST
     case "$ABI" in
         arm64-v8a) TARGET_HOST="aarch64-linux-android";;
-        armeabi-v7a|arm|armv7-a|arm-v7n) TARGET_HOST="armv7a-linux-androideabi";;
+        armeabi-v7a|arm|arm-v7n) TARGET_HOST="armv7a-linux-androideabi";;
         x86) TARGET_HOST="i686-linux-android";;
         x86_64) TARGET_HOST="x86_64-linux-android";;
         *) echo "[WARN] ABI base libs not supported: $ABI" >&2; return 1;;
@@ -239,8 +239,8 @@ build_android_media_libs() {
     meson_cross_file() {
         local cpu_family cpu
         case "$ABI" in
-            arm64-v8a|native) cpu_family="aarch64"; cpu="aarch64" ;;
-            armeabi-v7a|arm|armv7-a|arm-v7n) cpu_family="arm"; cpu="armv7" ;;
+            arm64-v8a) cpu_family="aarch64"; cpu="aarch64" ;;
+            armeabi-v7a|arm|arm-v7n) cpu_family="arm"; cpu="armv7" ;;
             x86) cpu_family="x86"; cpu="i686" ;;
             x86_64) cpu_family="x86_64"; cpu="x86_64" ;;
             *)
@@ -340,7 +340,7 @@ EOF
     local VPX_TARGET
     case "$ABI" in
         arm64-v8a) VPX_TARGET="arm64-android-gcc" ;;
-        armeabi-v7a|arm|armv7-a|arm-v7n) VPX_TARGET="armv7-android-gcc" ;;
+        armeabi-v7a|arm|arm-v7n) VPX_TARGET="armv7-android-gcc" ;;
         x86) VPX_TARGET="x86-android-gcc" ;;
         x86_64) VPX_TARGET="x86_64-android-gcc" ;;
     esac
@@ -466,6 +466,7 @@ function build_android {
         echo "--- ABI $ABI ---"
 
         arch_extra_flags=""
+        neon_flag=""
         stl_triple=""
         case "$ABI" in
             arm64-v8a)
@@ -473,12 +474,14 @@ function build_android {
                 ARCH="aarch64"
                 CPU=""
                 stl_triple="aarch64-linux-android"
+                neon_flag="--enable-neon"
                 ;;
-            armeabi-v7a|arm|armv7-a|arm-v7n)
+            armeabi-v7a)
                 TARGET_HOST="armv7a-linux-androideabi"
                 ARCH="arm"
                 CPU="armv7-a"
                 stl_triple="arm-linux-androideabi"
+                neon_flag="--enable-neon"
                 ;;
             x86)
                 TARGET_HOST="i686-linux-android"
@@ -493,12 +496,6 @@ function build_android {
                 CPU=""
                 arch_extra_flags="--disable-x86asm"
                 stl_triple="x86_64-linux-android"
-                ;;
-            native)
-                TARGET_HOST="aarch64-linux-android"
-                ARCH="aarch64"
-                CPU=""
-                stl_triple="aarch64-linux-android"
                 ;;
             *)
                 echo "[WARN] ABI no soportado: $ABI" >&2
@@ -568,7 +565,7 @@ function build_android {
                 --disable-debug \
                 --disable-doc \
                 --disable-ffplay \
-                --enable-neon \
+                ${neon_flag:+$neon_flag} \
                 $arch_extra_flags \
                 ${extra_version_flag:+$extra_version_flag} \
                 $feature_flags
