@@ -13,7 +13,9 @@ function build_linux {
     # Incluye lib64 por si alguna dependencia instala allí su .pc
     export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 
-    local linux_static=${FFMPEG_LINUX_STATIC:-0}
+    # Por defecto, Linux exporta un binario lo más estático posible.
+    # Puedes desactivar el fully-static con: FFMPEG_LINUX_STATIC=0
+    local linux_static=${FFMPEG_LINUX_STATIC:-1}
     local pkg_config_flags=""
     local extra_cflags="-Wno-stringop-overflow -Wno-array-bounds"
     local extra_ldflags=""

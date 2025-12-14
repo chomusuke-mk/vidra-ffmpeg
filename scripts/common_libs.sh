@@ -487,15 +487,30 @@ function ffmpeg_feature_flags {
         shift 2 || true
         local candidates=("$label" "$flag" "$@")
         local found=0
+        local any_exists=0
+        local any_nonstatic=0
+
         for pkg in "${candidates[@]}"; do
-            if pkg_usable "$pkg"; then
-                flags+=" $flag"
-                found=1
-                break
+            if pkg_exists "$pkg"; then
+                any_exists=1
+                if pkg_static_ok "$pkg"; then
+                    flags+=" $flag"
+                    found=1
+                    break
+                else
+                    any_nonstatic=1
+                fi
             fi
         done
+
         if [ "$found" -eq 0 ]; then
-            echo "[WARN] ${label} no encontrado; omitiendo" >&2
+            if [ "$want_static" -eq 1 ] && [ "$any_nonstatic" -eq 1 ]; then
+                echo "[INFO] ${label} omitido en build estático (no linkeable estáticamente)" >&2
+            elif [ "$any_exists" -eq 1 ]; then
+                echo "[WARN] ${label} detectado pero no usable; omitiendo" >&2
+            else
+                echo "[WARN] ${label} no encontrado; omitiendo" >&2
+            fi
         fi
     }
 
