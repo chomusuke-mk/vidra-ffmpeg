@@ -184,13 +184,18 @@ function build_svtav1 {
 
     echo "--- Compilando SVT-AV1 ---"
     pushd "$SRC_ROOT/svt-av1" >/dev/null
-    rm -rf build
-    cmake -S . -B build -G Ninja \
+
+    # IMPORTANTE: en Docker Desktop sobre Windows, borrar directorios grandes dentro de un bind mount
+    # puede fallar intermitentemente con "Directory not empty". Usa /tmp para el build.
+    local builddir="/tmp/svt-av1-build"
+    rm -rf "$builddir" >/dev/null 2>&1 || true
+
+    cmake -S . -B "$builddir" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="$PREFIX" \
         -DBUILD_SHARED_LIBS=OFF
-    cmake --build build -j"$(nproc)"
-    cmake --install build
+    cmake --build "$builddir" -j"$(nproc)"
+    cmake --install "$builddir"
 
     # FFmpeg (configure) no siempre utiliza Libs.private al testear, pero como
     # instalamos libSvtAv1Enc.a (estático) necesitamos exponer deps como -lm y -lpthread
@@ -280,6 +285,55 @@ function build_vulkan {
     cmake --build build -j"$(nproc)"
     cmake --install build
     popd >/dev/null
+}
+
+function install_static_pc_shim_libssh {
+    # FFmpeg (configure) puede fallar con libssh en modo -static si la .pc del sistema no
+    # arrastra correctamente dependencias de OpenSSL. Este shim fuerza esas deps en Libs.
+    # Recibe: $PREFIX (dist prefix del proyecto)
+    local PREFIX=$1
+    local pcdir="$PREFIX/lib/pkgconfig"
+    mkdir -p "$pcdir"
+
+    # Lee metadata desde el pkg-config del sistema (si existe) para mantener versión/rutas.
+    local sys_ver sys_libdir sys_incdir sys_libs
+    sys_ver=$(pkg-config --modversion libssh 2>/dev/null || echo "0.6.0")
+    sys_libdir=$(pkg-config --variable=libdir libssh 2>/dev/null || echo "/usr/lib/x86_64-linux-gnu")
+    sys_incdir=$(pkg-config --variable=includedir libssh 2>/dev/null || echo "/usr/include")
+    sys_libs=$(pkg-config --static --libs libssh 2>/dev/null || echo "-lssh")
+
+    # Algunos empaquetados de libssh no incluyen GSSAPI en Libs.private para --static;
+    # añade las dependencias explícitas si existen en el sistema para evitar símbolos
+    # gss_* faltantes en los tests estáticos de FFmpeg.
+    for dep in -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lkrb5support -lresolv; do
+        if [[ " $sys_libs " != *" $dep "* ]]; then
+            sys_libs+=" $dep"
+        fi
+    done
+
+    # Fuerza OpenSSL si el .pc del sistema no lo expone (esto evita fallos por BN_*/CRYPTO_*).
+    if [[ " $sys_libs " != *" -lssl "* ]]; then
+        sys_libs+=" -lssl"
+    fi
+    if [[ " $sys_libs " != *" -lcrypto "* ]]; then
+        sys_libs+=" -lcrypto"
+    fi
+
+    cat >"$pcdir/libssh.pc" <<EOF
+prefix=/usr
+exec_prefix=\${prefix}
+libdir=${sys_libdir}
+includedir=${sys_incdir}
+
+Name: libssh
+Description: libssh (static shim for FFmpeg)
+Version: ${sys_ver}
+Libs: ${sys_libs}
+Cflags: -I\${includedir}
+EOF
+
+    echo "[linux-deps] Instalado shim libssh.pc en $pcdir (Version: ${sys_ver})" >&2
+    PKG_CONFIG_PATH="$pcdir:${PKG_CONFIG_PATH:-}" pkg-config --static --libs libssh 2>/dev/null | sed 's/^/[linux-deps] libssh --static --libs: /' >&2 || true
 }
 
 function collect_target_libs {
@@ -408,33 +462,34 @@ function ffmpeg_feature_flags {
         local pkg=${pkg_expr%% *}
         [ "$want_static" -eq 0 ] && return 0
 
-        # For fully static builds, only rely on libraries we built/installed into PREFIX.
-        # Distro-provided .pc files frequently omit private deps needed for static linking.
-        local pcfiledir=""
-        pcfiledir=$(pkg-config --variable=pcfiledir "$pkg" 2>/dev/null || true)
-        if [ -n "${PREFIX:-}" ] && [ -n "$pcfiledir" ]; then
-            case "$pcfiledir" in
-                "$PREFIX"/*) ;;
-                *) return 1 ;;
-            esac
-        else
-            # If we can't identify where the .pc comes from, be conservative.
-            return 1
-        fi
+        # En builds 100% estáticos (-static), aceptamos dependencias provistas por el sistema
+        # SIEMPRE QUE pkg-config --static exponga libs y todas tengan su correspondiente lib*.a
+        # (esto evita que se habiliten libs que terminarían dependiendo de .so en tiempo de enlace).
 
         # Toolchain/system libs that may not have a matching lib*.a in the same libdir.
         local allow_missing=(c gcc_s m pthread dl rt resolv util stdc++ atomic)
 
         local libdirs=()
         local pc_libdir=""
-        pc_libdir=$(pkg-config --variable=libdir "$pkg" 2>/dev/null || true)
+        if [ -n "$pkg_libdir" ]; then
+            pc_libdir=$(PKG_CONFIG_PATH="$pkg_path" PKG_CONFIG_LIBDIR="$pkg_libdir" pkg-config --variable=libdir "$pkg" 2>/dev/null || true)
+        else
+            pc_libdir=$(PKG_CONFIG_PATH="$pkg_path" pkg-config --variable=libdir "$pkg" 2>/dev/null || true)
+        fi
         [ -n "$pc_libdir" ] && libdirs+=("$pc_libdir")
 
         while IFS= read -r token; do
+            [ -z "$token" ] && continue
             case "$token" in
                 -L*) libdirs+=("${token#-L}") ;;
             esac
-        done < <(pkg-config --static --libs "$pkg" 2>/dev/null | tr ' ' '\n')
+        done < <(
+            if [ -n "$pkg_libdir" ]; then
+                PKG_CONFIG_PATH="$pkg_path" PKG_CONFIG_LIBDIR="$pkg_libdir" pkg-config --static --libs "$pkg" 2>/dev/null
+            else
+                PKG_CONFIG_PATH="$pkg_path" pkg-config --static --libs "$pkg" 2>/dev/null
+            fi | tr ' ' '\n'
+        )
 
         # Dedup
         if [ "${#libdirs[@]}" -gt 0 ]; then
@@ -448,10 +503,41 @@ function ffmpeg_feature_flags {
             libdirs=("${dedup[@]}")
         fi
 
+        # Algunos .pc (p.ej. zlib en Ubuntu) no declaran libdir ni emiten -L, porque confían en
+        # las rutas por defecto del linker. En ese caso, usa rutas estándar para validar lib*.a.
+        if [ "${#libdirs[@]}" -eq 0 ]; then
+            if [ -n "${PREFIX:-}" ]; then
+                [ -d "$PREFIX/lib" ] && libdirs+=("$PREFIX/lib")
+                [ -d "$PREFIX/lib64" ] && libdirs+=("$PREFIX/lib64")
+            fi
+            for d in /usr/lib/x86_64-linux-gnu /usr/lib /lib/x86_64-linux-gnu /lib; do
+                [ -d "$d" ] && libdirs+=("$d")
+            done
+        else
+            # Aún con -L presentes, incluir rutas estándar evita falsos negativos.
+            for d in /usr/lib/x86_64-linux-gnu /usr/lib /lib/x86_64-linux-gnu /lib; do
+                [ -d "$d" ] && libdirs+=("$d")
+            done
+        fi
+
+        # Dedup de nuevo tras añadir rutas estándar
+        if [ "${#libdirs[@]}" -gt 0 ]; then
+            local dedup2=()
+            local seen2=""
+            for d in "${libdirs[@]}"; do
+                [[ ":$seen2:" == *":$d:"* ]] && continue
+                seen2+="$d:"
+                dedup2+=("$d")
+            done
+            libdirs=("${dedup2[@]}")
+        fi
+
         [ "${#libdirs[@]}" -eq 0 ] && return 1
 
         while IFS= read -r libflag; do
+            [ -z "$libflag" ] && continue
             local name=${libflag#-l}
+            [ -z "$name" ] && continue
             local allowed=0
             for a in "${allow_missing[@]}"; do
                 if [ "$name" = "$a" ]; then
@@ -469,7 +555,13 @@ function ffmpeg_feature_flags {
                 fi
             done
             [ "$found" -eq 1 ] || return 1
-        done < <(pkg-config --static --libs-only-l "$pkg" 2>/dev/null | tr ' ' '\n')
+        done < <(
+            if [ -n "$pkg_libdir" ]; then
+                PKG_CONFIG_PATH="$pkg_path" PKG_CONFIG_LIBDIR="$pkg_libdir" pkg-config --static --libs-only-l "$pkg" 2>/dev/null
+            else
+                PKG_CONFIG_PATH="$pkg_path" pkg-config --static --libs-only-l "$pkg" 2>/dev/null
+            fi | tr ' ' '\n'
+        )
 
         return 0
     }
@@ -505,7 +597,7 @@ function ffmpeg_feature_flags {
 
         if [ "$found" -eq 0 ]; then
             if [ "$want_static" -eq 1 ] && [ "$any_nonstatic" -eq 1 ]; then
-                echo "[INFO] ${label} omitido en build estático (no linkeable estáticamente)" >&2
+                echo "[WARN] ${label} detectado pero no linkeable estáticamente; omitiendo" >&2
             elif [ "$any_exists" -eq 1 ]; then
                 echo "[WARN] ${label} detectado pero no usable; omitiendo" >&2
             else
@@ -593,7 +685,7 @@ function ffmpeg_feature_flags {
                 # Linux: el usuario pidió compilar con nvcodec por defecto cuando está solicitado en la lista de libs.
                 # Otros targets: mantener opt-in para evitar builds sorpresa.
                 if [ -n "${FFMPEG_DISABLE_NVENC:-}" ]; then
-                    echo "[INFO] nvcodec deshabilitado por FFMPEG_DISABLE_NVENC=1" >&2
+                    echo "[WARN] nvcodec deshabilitado por FFMPEG_DISABLE_NVENC=1; omitiendo" >&2
                 elif [ "$target" = "linux" ]; then
                     prepare_nvcodec_headers "/usr/local" >/dev/null
                     flags+=" --enable-ffnvcodec --enable-nvenc"
@@ -602,7 +694,7 @@ function ffmpeg_feature_flags {
                         prepare_nvcodec_headers >/dev/null
                         flags+=" --enable-ffnvcodec --enable-nvenc"
                     else
-                        echo "[INFO] nvcodec omitido (set FFMPEG_ALLOW_NVENC=1 para habilitarlo)" >&2
+                        echo "[WARN] nvcodec omitido (set FFMPEG_ALLOW_NVENC=1 para habilitarlo)" >&2
                     fi
                 fi
                 ;;

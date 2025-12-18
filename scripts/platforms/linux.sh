@@ -19,14 +19,19 @@ function build_linux {
     local pkg_config_flags=""
     local extra_cflags="-Wno-stringop-overflow -Wno-array-bounds"
     local extra_ldflags=""
+    local extra_libs=""
     local ff_cfg_static_flags=""
 
     if [ "$linux_static" = "1" ]; then
         export CFLAGS="-O3 -static"
         export LDFLAGS="-static"
-        pkg_config_flags="--pkg-config-flags=\"--static\""
+        pkg_config_flags="--pkg-config-flags=--static"
         extra_cflags="-static $extra_cflags"
         extra_ldflags="-static"
+        # `configure` a veces hace pruebas de enlace con solo -l<lib> (sin arrastrar deps de pkg-config).
+        # En estático eso rompe fácil (ej: libssh requiere símbolos de libcrypto/libssl).
+        # Mantén este set pequeño y de libs de toolchain/sistema que suelen existir.
+        extra_libs="-lssl -lcrypto -lz -ldl -lm -lpthread -lstdc++ -latomic"
         ff_cfg_static_flags="--enable-static --disable-shared"
     else
         export CFLAGS="-O3"
@@ -50,11 +55,20 @@ function build_linux {
         local libs feature_flags output_dir version_dir extra_version_flag
         libs=$(collect_target_libs "linux" "$build_variant")
 
+        if [ "$linux_static" = "1" ] && [[ " $libs " == *" libssh "* ]]; then
+            if [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.a" ] && [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.so" ]; then
+                echo "[linux-deps] Instalando libkrb5-dev (GSSAPI) para libssh en modo estático" >&2
+                apt-get update >/dev/null
+                apt-get install -y libkrb5-dev >/dev/null
+            fi
+            install_static_pc_shim_libssh "$PREFIX"
+        fi
+
         if [[ " $libs " == *" libsvtav1 "* ]]; then
             build_svtav1 "$PREFIX"
         fi
 
-        if [[ " $libs " == *" vulkan "* ]]; then
+        if [[ " $libs " == *" vulkan "* ]] && [ "$linux_static" != "1" ]; then
             build_vulkan "$PREFIX"
         fi
 
@@ -80,6 +94,7 @@ function build_linux {
             --disable-doc \
             --extra-cflags="$extra_cflags" \
             ${extra_ldflags:+--extra-ldflags="$extra_ldflags"} \
+            ${extra_libs:+--extra-libs="$extra_libs"} \
             ${extra_version_flag:+$extra_version_flag} \
             $feature_flags
 
