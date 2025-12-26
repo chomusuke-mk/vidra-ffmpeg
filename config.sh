@@ -2,7 +2,7 @@ FFMPEG_VERSION=8.0.1
 EXTRA_VERSION="vidra_build-chomusuke.dev"
 
 # Librerías comunes (All en libraries.md)
-LIBS_COMMON="x264 zlib brotli openssl libxml2 freetype harfbuzz fribidi libass libmp3lame opus libdav1d libvpx libwebp libopenjpeg zimg libsoxr"
+LIBS_COMMON="x264 zlib openssl libxml2 freetype harfbuzz fribidi libass libmp3lame opus libdav1d libvpx libwebp libopenjpeg zimg libsoxr"
 # Librerías comunes adicionales (solo para build "full")
 LIBS_COMMON_EXTENDED=""
 

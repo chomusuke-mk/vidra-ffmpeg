@@ -8,17 +8,19 @@ function build_linux {
 
     load_config
     ensure_sources
+    ensure_build_tools
 
     export PREFIX="/build/dist/linux"
-    # Incluye lib64 por si alguna dependencia instala allí su .pc
-    export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
+    # Incluye lib64 y multiarch (x86_64-linux-gnu) por si alguna dependencia instala allí su .pc
+    export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig:$PREFIX/lib/x86_64-linux-gnu/pkgconfig"
 
     # Por defecto, Linux exporta un binario lo más estático posible.
     # Puedes desactivar el fully-static con: FFMPEG_LINUX_STATIC=0
     local linux_static=${FFMPEG_LINUX_STATIC:-1}
     local pkg_config_flags=""
     local extra_cflags="-Wno-stringop-overflow -Wno-array-bounds"
-    local extra_ldflags=""
+    # Siempre empuja el prefix al rpath de compilación para que los checks de ffmpeg encuentren .a/.h
+    local extra_ldflags="-L$PREFIX/lib -L$PREFIX/lib64"
     local extra_libs=""
     local ff_cfg_static_flags=""
 
@@ -27,7 +29,7 @@ function build_linux {
         export LDFLAGS="-static"
         pkg_config_flags="--pkg-config-flags=--static"
         extra_cflags="-static $extra_cflags"
-        extra_ldflags="-static"
+        extra_ldflags="-static $extra_ldflags"
         # `configure` a veces hace pruebas de enlace con solo -l<lib> (sin arrastrar deps de pkg-config).
         # En estático eso rompe fácil (ej: libssh requiere símbolos de libcrypto/libssl).
         # Mantén este set pequeño y de libs de toolchain/sistema que suelen existir.
@@ -55,12 +57,64 @@ function build_linux {
         local libs feature_flags output_dir version_dir extra_version_flag
         libs=$(collect_target_libs "linux" "$build_variant")
 
+        if [[ " $libs " == *" brotli "* ]]; then
+            build_brotli "$PREFIX"
+        fi
+        if [[ " $libs " == *" libvpl "* ]]; then
+            build_libvpl_static "$PREFIX"
+        fi
+        if [[ " $libs " == *" vaapi "* ]]; then
+            build_libva_static "$PREFIX"
+        fi
+        if [[ " $libs " == *" opencl "* ]]; then
+            build_opencl_static "$PREFIX"
+        fi
+
+        # Texto/subtítulos
+        if [[ " $libs " == *" freetype "* || " $libs " == *" libfreetype "* ]]; then
+            build_freetype "$PREFIX"
+        fi
+        if [[ " $libs " == *" fribidi "* || " $libs " == *" libfribidi "* ]]; then
+            build_fribidi "$PREFIX"
+        fi
+        if [[ " $libs " == *" harfbuzz "* || " $libs " == *" libharfbuzz "* ]]; then
+            build_harfbuzz "$PREFIX"
+        fi
+        if [[ " $libs " == *" libass "* ]]; then
+            build_libass "$PREFIX"
+        fi
+
+        # Codecs adicionales
+        if [[ " $libs " == *" dav1d "* || " $libs " == *" libdav1d "* ]]; then
+            build_dav1d "$PREFIX"
+        fi
+        if [[ " $libs " == *" soxr "* || " $libs " == *" libsoxr "* ]]; then
+            build_soxr "$PREFIX"
+        fi
+        if [[ " $libs " == *" libx265 "* ]]; then
+            build_x265 "$PREFIX"
+        fi
+        if [[ " $libs " == *" libxml2 "* ]]; then
+            build_libxml2 "$PREFIX"
+        fi
+
+        # Verifica disponibilidad de pkg-config para libs críticas antes de configurar FFmpeg
+        echo "[linux-debug] PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >&2
+        for pc in dav1d soxr x265 libdav1d libsoxr libx265; do
+            if PKG_CONFIG_PATH="$PKG_CONFIG_PATH" pkg-config --exists "$pc"; then
+                echo "[linux-debug] pkg-config ok: $pc" >&2
+            else
+                echo "[linux-debug] pkg-config missing: $pc" >&2
+            fi
+        done
+
         if [ "$linux_static" = "1" ] && [[ " $libs " == *" libssh "* ]]; then
             if [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.a" ] && [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.so" ]; then
                 echo "[linux-deps] Instalando libkrb5-dev (GSSAPI) para libssh en modo estático" >&2
                 apt-get update >/dev/null
                 apt-get install -y libkrb5-dev >/dev/null
             fi
+            build_libssh_static "$PREFIX"
             install_static_pc_shim_libssh "$PREFIX"
         fi
 
@@ -68,7 +122,7 @@ function build_linux {
             build_svtav1 "$PREFIX"
         fi
 
-        if [[ " $libs " == *" vulkan "* ]] && [ "$linux_static" != "1" ]; then
+        if [[ " $libs " == *" vulkan "* ]]; then
             build_vulkan "$PREFIX"
         fi
 

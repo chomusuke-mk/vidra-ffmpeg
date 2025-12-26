@@ -10,7 +10,6 @@ This table documents the libraries enabled via `config.sh`, what they provide, a
 | libdav1d           | AV1 decoder                         | Fast AV1 decode                             | All                        | BSD                              |
 | libvpx             | VP8/VP9 codec                       | WebM decode/encode                          | All                        | BSD                              |
 | zlib               | Compressed streams                  | DASH/HLS gzip                               | All                        | Zlib                             |
-| brotli             | Brotli manifests                    | DASH/HLS Brotli                             | All                        | MIT                              |
 | openssl            | TLS/HTTPS                           | Robust HTTP(S)/HLS                          | All                        | Apache-2                          |
 | schannel           | TLS backend nativo                  | HTTPS en Windows                            | Windows                    | MIT                              |
 | libxml2            | XML parsing                         | DASH manifests                              | All                        | MIT                              |
