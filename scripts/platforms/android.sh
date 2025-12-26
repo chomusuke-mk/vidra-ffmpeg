@@ -202,8 +202,8 @@ build_android_media_libs() {
         if command -v gperf >/dev/null 2>&1; then
             return
         fi
-        echo "--- Installing gperf (apt) ---"
-        apt-get update && apt-get install -y gperf && rm -rf /var/lib/apt/lists/*
+        echo "[ERROR] Falta gperf en la imagen. Rebuild Docker para incluirlo." >&2
+        exit 1
     }
 
     fetch_src() {

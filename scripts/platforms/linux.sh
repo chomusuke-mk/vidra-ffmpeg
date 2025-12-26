@@ -110,9 +110,8 @@ function build_linux {
 
         if [ "$linux_static" = "1" ] && [[ " $libs " == *" libssh "* ]]; then
             if [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.a" ] && [ ! -f "/usr/lib/x86_64-linux-gnu/libgssapi_krb5.so" ]; then
-                echo "[linux-deps] Instalando libkrb5-dev (GSSAPI) para libssh en modo estático" >&2
-                apt-get update >/dev/null
-                apt-get install -y libkrb5-dev >/dev/null
+                echo "[ERROR] Falta libkrb5-dev (GSSAPI) en la imagen. Rebuild Docker para incluirlo." >&2
+                exit 1
             fi
             build_libssh_static "$PREFIX"
             install_static_pc_shim_libssh "$PREFIX"
@@ -127,6 +126,21 @@ function build_linux {
         fi
 
         feature_flags=$(ffmpeg_feature_flags "linux" "$libs")
+
+        # En modo estático, la autodetección puede ser demasiado conservadora.
+        # Si el usuario pidió explícitamente vaapi/vulkan y ya compilamos sus deps,
+        # fuerza los flags para que queden reflejados en la configuración final.
+        local forced_flags=""
+        if [[ " $libs " == *" vaapi "* ]]; then
+            if [[ " $feature_flags " != *" --enable-vaapi "* ]]; then
+                forced_flags+=" --enable-vaapi"
+            fi
+        fi
+        if [[ " $libs " == *" vulkan "* ]]; then
+            if [[ " $feature_flags " != *" --enable-vulkan "* ]]; then
+                forced_flags+=" --enable-vulkan"
+            fi
+        fi
         extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
         version_dir=$(version_dir_for_variant "$build_variant")
         output_dir="/output/${version_dir}/linux"
@@ -150,7 +164,8 @@ function build_linux {
             ${extra_ldflags:+--extra-ldflags="$extra_ldflags"} \
             ${extra_libs:+--extra-libs="$extra_libs"} \
             ${extra_version_flag:+$extra_version_flag} \
-            $feature_flags
+            $feature_flags \
+            $forced_flags
 
         make -j$(nproc)
 

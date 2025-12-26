@@ -55,7 +55,7 @@ function _fetch_source_bundle {
     fi
 
     echo "--- Descargando $name $ver ---"
-    curl -L "$url" -o "$tmp"
+    curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors "$url" -o "$tmp"
 
     case "$url" in
         *.tar.gz|*.tgz)
@@ -124,7 +124,7 @@ function ensure_sources {
 
         local tmp
         tmp=$(mktemp /tmp/src.XXXXXX)
-        curl -L "$url" -o "$tmp"
+        curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors "$url" -o "$tmp"
 
         case "$url" in
             *.tar.gz|*.tgz)
@@ -161,7 +161,7 @@ function ensure_sources {
     if [ ! -d "$ffmpeg_dir" ]; then
         echo "--- Descargando FFmpeg $FFMPEG_VER ---"
         rm -rf "$ffmpeg_dir"
-        curl -L "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VER.tar.xz" -o /tmp/ffmpeg.tar.xz
+        curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VER.tar.xz" -o /tmp/ffmpeg.tar.xz
         tar -xJf /tmp/ffmpeg.tar.xz -C "$SRC_ROOT"
         rm /tmp/ffmpeg.tar.xz
     fi
@@ -275,9 +275,8 @@ function ensure_build_tools {
     command -v cmake >/dev/null 2>&1 || to_install+=(cmake)
 
     if [ ${#to_install[@]} -gt 0 ]; then
-        echo "[deps] Instalando herramientas: ${to_install[*]}" >&2
-        apt-get update >/dev/null
-        apt-get install -y "${to_install[@]}" >/dev/null
+        echo "[ERROR] Herramientas faltantes: ${to_install[*]}. Rebuild la imagen Docker para incluirlas." >&2
+        exit 1
     fi
 }
 
@@ -414,6 +413,67 @@ function build_vulkan {
     fi
 
     pushd "$SRC_ROOT/vulkan-loader" >/dev/null
+
+    # Upstream solo soporta loader estático en macOS (APPLE_STATIC_LOADER).
+    # Para un FFmpeg totalmente estático en Linux, parchea el loader para producir libvulkan.a.
+    python3 - "$SRC_ROOT/vulkan-loader/loader/CMakeLists.txt" <<'PY'
+import pathlib, re, sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+changed = False
+
+# 1) Opción BUILD_STATIC_LOADER (solo non-WIN32) para permitir libvulkan.a en Linux.
+if "option(BUILD_STATIC_LOADER" not in text:
+    marker = "    endif()\n\n    if(APPLE_STATIC_LOADER)"
+    if marker in text:
+        text = text.replace(
+            marker,
+            "    endif()\n\n    option(BUILD_STATIC_LOADER \"Build a static Vulkan loader (libvulkan.a) for non-Apple platforms.\" OFF)\n\n    if(APPLE_STATIC_LOADER)",
+        )
+        changed = True
+
+# 2) Construye STATIC cuando BUILD_STATIC_LOADER=ON.
+if "APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER" not in text:
+    before = text
+    text = text.replace(
+        "    if(APPLE_STATIC_LOADER)\n        add_library(vulkan STATIC)\n        target_compile_definitions(vulkan PRIVATE APPLE_STATIC_LOADER)\n\n        message(WARNING \"The APPLE_STATIC_LOADER option has been set. Note that this will only work on MacOS and is not supported \"\n                \"or tested as part of the loader. Use it at your own risk.\")\n    else()\n        add_library(vulkan SHARED)\n    endif()\n",
+        "    if(APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER)\n        add_library(vulkan STATIC)\n\n        if(APPLE_STATIC_LOADER)\n            target_compile_definitions(vulkan PRIVATE APPLE_STATIC_LOADER)\n\n            message(WARNING \"The APPLE_STATIC_LOADER option has been set. Note that this will only work on MacOS and is not supported \"\n                    \"or tested as part of the loader. Use it at your own risk.\")\n        endif()\n    else()\n        add_library(vulkan SHARED)\n    endif()\n",
+    )
+    if text != before:
+        changed = True
+
+# 3) Evita SOVERSION/VERSION cuando es STATIC.
+if "if(NOT (APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER))" not in text:
+    before = text
+    text = re.sub(
+        r"\n\s*set_target_properties\(vulkan PROPERTIES\n\s*SOVERSION \"1\"\n\s*VERSION \"\$\{VULKAN_LOADER_VERSION\}\"\n\s*\)\n",
+        "\n    if(NOT (APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER))\n        set_target_properties(vulkan PROPERTIES\n            SOVERSION \"1\"\n            VERSION \"${VULKAN_LOADER_VERSION}\"\n        )\n    endif()\n",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if text != before:
+        changed = True
+
+# 4) En static loader (Apple o Linux) evita exports/config/pkgconfig upstream.
+#    Para BUILD_STATIC_LOADER, instala solo el archive para que exista libvulkan.a.
+if "if (APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER)" not in text:
+    before = text
+    text = re.sub(
+        r"if \(APPLE_STATIC_LOADER\)\n([\s\S]*?)return\(\)\nendif\(\)\n",
+        "if (APPLE_STATIC_LOADER OR BUILD_STATIC_LOADER)\n    # TLDR: This feature only exists at the request of Google for Chromium. No other project should use this!\n    message(NOTICE \"Static Vulkan loader: it will be built; upstream vulkan.pc and VulkanLoaderConfig.cmake won't be generated!\")\n    if (BUILD_STATIC_LOADER)\n        install(TARGETS vulkan ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})\n    endif()\n    return()\nendif()\n",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if text != before:
+        changed = True
+
+if changed:
+    path.write_text(text, encoding="utf-8")
+PY
+
     rm -rf build
     CFLAGS="-O3 -fPIC" LDFLAGS="" cmake -S . -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
@@ -428,6 +488,26 @@ function build_vulkan {
         -DCMAKE_PREFIX_PATH="$PREFIX"
     cmake --build build -j"$(nproc)"
     cmake --install build
+
+    # Asegura un pkg-config 'vulkan' con versión suficiente para FFmpeg 8.x.
+    local pcdir="$PREFIX/lib/pkgconfig"
+    mkdir -p "$pcdir"
+    if [ ! -f "$pcdir/vulkan.pc" ]; then
+        local ver="${VULKAN_SDK_REF#vulkan-sdk-}"
+        cat >"$pcdir/vulkan.pc" <<EOF
+prefix=$PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: vulkan
+Description: Vulkan Loader
+Version: $ver
+Libs: -L\${libdir} -lvulkan
+Libs.private: -ldl -lpthread -lm
+Cflags: -I\${includedir}
+EOF
+    fi
     popd >/dev/null
 }
 
@@ -446,8 +526,7 @@ function build_libvpl_static {
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_TESTS=OFF \
         -DBUILD_EXAMPLES=OFF \
-        -DBUILD_TOOLS=OFF \
-        -DVPL_INSTALL_PKGCONFIG=ON
+        -DBUILD_TOOLS=OFF
     cmake --build build -j"$(nproc)"
     cmake --install build
     popd >/dev/null
@@ -461,9 +540,8 @@ function build_libva_static {
 
     echo "--- Compilando libva $LIBVA_REF (static) ---"
     if [ ! -f /usr/lib/x86_64-linux-gnu/libdrm.a ]; then
-        echo "[deps] Instalando libdrm-dev para libva" >&2
-        apt-get update >/dev/null
-        apt-get install -y libdrm-dev >/dev/null
+        echo "[ERROR] Falta libdrm-dev (libdrm.a) en la imagen. Rebuild Docker para incluirlo." >&2
+        exit 1
     fi
     local old_cflags=${CFLAGS:-}
     local old_ldflags=${LDFLAGS:-}
@@ -544,8 +622,7 @@ build_freetype() {
     ./configure \
         --prefix="$PREFIX" \
         --enable-static --disable-shared \
-        --without-harfbuzz --without-bzip2 --without-brotli \
-        --without-png-config
+        --without-harfbuzz --without-bzip2 --without-brotli
     make -j"$(nproc)"
     make install
     popd >/dev/null
@@ -597,9 +674,8 @@ build_libass() {
     ./configure \
         --prefix="$PREFIX" \
         --enable-static --disable-shared \
-        --disable-test --disable-example \
-        --disable-libunibreak \
-        --with-harfbuzz=yes --with-freetype=yes --with-fribidi=yes
+        --disable-test \
+        --disable-libunibreak
     make -j"$(nproc)"
     make install
     popd >/dev/null
@@ -776,24 +852,25 @@ build_libssh_static() {
     if [ -f "$PREFIX/lib/libssh.a" ] || [ -f "$PREFIX/lib64/libssh.a" ]; then
         return
     fi
+
+    # Nota: aunque la imagen base tenga libssh-dev (y libssh.a), ese build suele estar enlazado
+    # contra OpenSSL mediante dependencias que NO aparecen en su libssh.pc, y además puede
+    # arrastrar deps (p.ej. com_err) sin variante estática instalada. Para un FFmpeg 100% estático,
+    # construimos una libssh propia y controlamos el .pc.
     local src="$SRC_ROOT/libssh"
     if [ ! -d "$src/.git" ] && [ ! -f "$src/CMakeLists.txt" ]; then
         rm -rf "$src"
-        # Official git.libssh.org is often unreachable; fall back to GitHub mirror.
-        if [ ! -d "$src/.git" ]; then
-            rm -rf "$src"
-        fi
-        local urls=(
-            "https://github.com/libssh/libssh.git"
-            "https://gitlab.com/libssh/libssh-mirror/libssh.git"
-        )
-        for url in "${urls[@]}"; do
-            if git clone --depth 1 --branch stable-0.10 "$url" "$src"; then
-                break
-            else
-                rm -rf "$src"
-            fi
-        done
+        # En algunos entornos, los clones a GitHub/GitLab pueden requerir credenciales.
+        # Usa el tarball oficial (HTTP) para garantizar builds no-interactivos.
+        local libssh_ver=${LIBSSH_TARBALL_VER:-0.10.6}
+        local tmp=/tmp/libssh-${libssh_ver}.tar.xz
+        echo "[libssh] descargando tarball libssh-${libssh_ver} (libssh.org)" >&2
+        curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
+            "https://www.libssh.org/files/0.10/libssh-${libssh_ver}.tar.xz" \
+            -o "$tmp"
+        tar -xJf "$tmp" -C "$SRC_ROOT"
+        rm -f "$tmp"
+        mv "$SRC_ROOT/libssh-${libssh_ver}" "$src"
     fi
     pushd "$src" >/dev/null
     rm -rf build && mkdir -p build
