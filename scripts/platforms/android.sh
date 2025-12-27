@@ -284,12 +284,29 @@ EOF
             ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic --disable-extra-programs --disable-doc
         make -j"$(nproc)" && make install )
 
-    # libmp3lame
-    fetch_src "lame" "3.100" "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz"
-    ( cd "$SRC/lame-3.100" && make distclean >/dev/null 2>&1 || true
+    # libmp3lame (instala y publica .pc para que FFmpeg pueda detectarlo en Android)
+    local LAME_VER=3.100
+    fetch_src "lame" "$LAME_VER" "https://downloads.sourceforge.net/project/lame/lame/$LAME_VER/lame-$LAME_VER.tar.gz"
+    ( cd "$SRC/lame-$LAME_VER" && make distclean >/dev/null 2>&1 || true
         CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
             ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic --disable-frontend
         make -j"$(nproc)" && make install )
+
+    # Algunos empaquetados de LAME no generan libmp3lame.pc; créalo para que ffmpeg_feature_flags lo habilite.
+    mkdir -p "$PREFIX/lib/pkgconfig"
+    cat > "$PREFIX/lib/pkgconfig/libmp3lame.pc" <<EOF
+prefix=$PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: LAME
+Description: LAME MP3 encoding library
+Version: $LAME_VER
+Libs: -L\${libdir} -lmp3lame
+Libs.private: -lm
+Cflags: -I\${includedir}
+EOF
 
     # twolame
     fetch_src "twolame" "0.4.0" "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"

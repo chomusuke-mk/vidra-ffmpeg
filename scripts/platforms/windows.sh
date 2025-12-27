@@ -132,6 +132,10 @@ EOF
 
         local libs feature_flags version_dir output_dir extra_version_flag
         libs=$(collect_target_libs "windows" "$build_variant")
+        # Enable NVENC/ffnvcodec automatically when requested in config.sh for Windows builds.
+        if [[ " $libs " == *" nvcodec "* ]] && [ -z "${FFMPEG_ALLOW_NVENC:-}" ]; then
+            export FFMPEG_ALLOW_NVENC=1
+        fi
         feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
         if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
             echo "[win-deps] ERROR: No se resolvieron flags para las libs solicitadas ($libs). Revisa pkg-config paths y sysroot." >&2
