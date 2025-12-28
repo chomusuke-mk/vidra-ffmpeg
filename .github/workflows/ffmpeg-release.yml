@@ -1,0 +1,173 @@
+name: FFmpeg 8 Auto Release
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override FFmpeg 8.x version (e.g., 8.0.2). Defaults to latest n8 tag"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ffmpeg-8-auto-release
+  cancel-in-progress: false
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      latest_version: ${{ steps.discover.outputs.latest_version }}
+      skip: ${{ steps.skip.outputs.skip }}
+    steps:
+      - name: Determine latest FFmpeg 8.x tag
+        id: discover
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            latest="$INPUT_VERSION"
+          else
+            latest=$(curl -fsSL "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
+              | jq -r '.[].name | select(test("^n8\\.")) | sub("^n"; "")' | head -n1)
+          fi
+          if [ -z "$latest" ]; then
+            echo "No FFmpeg 8.x tag found" >&2
+            exit 1
+          fi
+          echo "latest_version=$latest" >> "$GITHUB_OUTPUT"
+      - name: Check if release already exists
+        id: skip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="ffmpeg-${{ steps.discover.outputs.latest_version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check-version
+    if: needs.check-version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          [
+            linux,
+            windows,
+            android-arm64-v8a,
+            android-armeabi-v7a,
+            android-x86,
+            android-x86_64,
+          ]
+        variant: [standard, full]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.target }} (${{ matrix.variant }})
+        id: build
+        env:
+          FFMPEG_VERSION: ${{ needs.check-version.outputs.latest_version }}
+          FFMPEG_BUILDS: ${{ matrix.variant }}
+        run: |
+          version_dir="$FFMPEG_VERSION"
+          variant_suffix=""
+          if [ "$FFMPEG_BUILDS" = "full" ]; then
+            version_dir="${FFMPEG_VERSION}-full"
+            variant_suffix="-full"
+          fi
+
+          case "${{ matrix.target }}" in
+            linux)
+              docker compose run --rm ffmpeg-builder linux
+              src_dir="output/${version_dir}/linux"
+              sys_tag="linux"
+              ;;
+            windows)
+              docker compose run --rm ffmpeg-builder windows
+              src_dir="output/${version_dir}/windows"
+              sys_tag="windows"
+              ;;
+            android-*)
+              abi="${{ matrix.target#android- }}"
+              export ANDROID_ABI="$abi"
+              docker compose run --rm ffmpeg-builder android
+              src_dir="output/${version_dir}/android/$abi"
+              sys_tag="android-$abi"
+              ;;
+            *)
+              echo "Unknown target" >&2
+              exit 1
+              ;;
+          esac
+
+          mkdir -p artifacts
+          artifact="ffmpeg-${FFMPEG_VERSION}${variant_suffix}-${sys_tag}.zip"
+          dest="$(pwd)/artifacts/$artifact"
+          if [ ! -d "$src_dir" ]; then
+            echo "Missing output directory: $src_dir" >&2
+            exit 1
+          fi
+          (cd "$src_dir" && zip -r "$dest" .)
+          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact }}
+          path: artifacts/${{ steps.build.outputs.artifact }}
+          if-no-files-found: error
+
+  release:
+    needs: [check-version, build]
+    if: needs.check-version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Publish GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          ver="${{ needs.check-version.outputs.latest_version }}"
+          tag="ffmpeg-$ver"
+          title="FFmpeg $ver"
+          notes="Automated builds for FFmpeg $ver (standard + full)."
+
+          cd dist-artifacts
+          # Generate checksums
+          sha256sum * > SHA2-256SUMS
+          sha512sum * > SHA2-512SUMS
+
+          # Sign checksums (requires GPG_PRIVATE_KEY and GPG_PASSPHRASE secrets)
+          if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$GPG_PASSPHRASE" ]; then
+            echo "Missing GPG_PRIVATE_KEY or GPG_PASSPHRASE secrets; cannot create signatures" >&2
+            exit 1
+          fi
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --armor -o SHA2-256SUMS.sig SHA2-256SUMS
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --armor -o SHA2-512SUMS.sig SHA2-512SUMS
+
+          # Update helper file
+          {
+            echo "version=$ver"
+            echo "tag=$tag"
+            echo "timestamp=$(date -u +%FT%TZ)"
+          } > _update
+
+          cd ..
+          gh release create "$tag" dist-artifacts/* --title "$title" --notes "$notes"
