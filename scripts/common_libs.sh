@@ -16,7 +16,7 @@ FFMPEG_LIBS_LINUX_EXTENDED=""
 FFMPEG_LIBS_WINDOWS_EXTENDED=""
 FFMPEG_LIBS_ANDROID_EXTENDED=""
 FFMPEG_BUILDS_LIST="standard"
-ANDROID_ABIS="arm64-v8a"
+ANDROID_ABI_DEFAULT="arm64-v8a"
 
 # Paquetes base reutilizables para todos los SO; solo se descargan (no se compilan).
 COMMON_SRC_BUNDLES=(
@@ -28,8 +28,8 @@ COMMON_SRC_BUNDLES=(
 )
 
 # Default warning suppressions for mingw builds to keep output clean.
-# By default leave empty; set MINGW_SUPPRESS_WARNINGS via Dockerfile/ENV if desired.
-MINGW_SUPPRESS_DEFAULT=""
+# Include unused-function to silence libswscale alpha helpers that are not referenced under our configs.
+MINGW_SUPPRESS_DEFAULT="-Wno-unused-function"
 
 SRC_ROOT="/build/sources"
 
@@ -77,6 +77,8 @@ function _fetch_source_bundle {
 }
 
 function load_config {
+    local env_android_abi=${ANDROID_ABI:-}
+    local env_android_abis_legacy=${ANDROID_ABIS:-}
     if [ -f "$CONFIG_FILE" ]; then
         # shellcheck disable=SC1090
         source "$CONFIG_FILE"
@@ -96,7 +98,14 @@ function load_config {
     FFMPEG_LIBS_LINUX_EXTENDED=${LIBS_LINUX_EXTENDED:-}
     FFMPEG_LIBS_WINDOWS_EXTENDED=${LIBS_WINDOWS_EXTENDED:-}
     FFMPEG_LIBS_ANDROID_EXTENDED=${LIBS_ANDROID_EXTENDED:-}
-    ANDROID_ABIS=${ANDROID_ABIS:-$ANDROID_ABIS}
+
+    # Single-ABI selection for Android builds; honor legacy ANDROID_ABIS for compatibility (first token only).
+    if [ -z "${ANDROID_ABI:-}" ] && [ -n "$env_android_abis_legacy" ]; then
+        ANDROID_ABI="$env_android_abis_legacy"
+        echo "[WARN] ANDROID_ABIS is deprecated; use ANDROID_ABI. Using: $ANDROID_ABI" >&2
+    else
+        ANDROID_ABI=${env_android_abi:-${ANDROID_ABI:-$ANDROID_ABI_DEFAULT}}
+    fi
     FFMPEG_EXTRA_VERSION=${EXTRA_VERSION:-$FFMPEG_EXTRA_VERSION}
     FFMPEG_BUILDS_LIST=${FFMPEG_BUILDS:-$FFMPEG_BUILDS_LIST}
     if [ -z "$FFMPEG_BUILDS_LIST" ]; then

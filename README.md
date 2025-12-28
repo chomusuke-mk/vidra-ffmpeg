@@ -1,11 +1,13 @@
 docker compose run --rm ffmpeg-builder linux
 docker compose run --rm ffmpeg-builder windows
 docker compose run --rm ffmpeg-builder android
+
 # Vidra FFmpeg builder
 
-Entorno Docker para compilar FFmpeg estático en Linux (x86_64), Windows (x86_64 via MinGW-w64) y Android (ABIs configurables). Usa la configuración de `config.sh` para fijar versión y librerías por sistema.
+Entorno Docker para compilar FFmpeg estático en Linux (x86_64), Windows (x86_64 via MinGW-w64) y Android (ABI seleccionable). Usa la configuración de `config.sh` para fijar versión y librerías por sistema.
 
 ## Requisitos
+
 - Docker y Docker Compose.
 - Espacio para NDK (~2 GB) y fuentes cacheadas en `./sources`.
 - Conexion en el primer uso para descargar NDK, FFmpeg y x264.
@@ -24,7 +26,7 @@ LIBS_COMMON="iconv zlib libxml2 fontconfig harfbuzz freetype fribidi libass liba
 LIBS_LINUX="vaapi vulkan libshaderc opencl libvpl nvcodec libbluray libdvdnav libdvdread libzvbi sdl2"
 LIBS_WINDOWS="dxva2 d3d11va vulkan libshaderc opencl schannel gmp amf libbluray libdvdnav libdvdread libzvbi sdl2"
 LIBS_ANDROID="vulkan opencl jni mediacodec enable-neon"
-ANDROID_ABIS="arm64-v8a"  # puedes agregar: armeabi-v7a x86 x86_64
+ANDROID_ABI="arm64-v8a"  # elige uno: armeabi-v7a | arm64-v8a | x86 | x86_64
 ```
 
 - `LIBS_*` controla librerías/flags; las específicas por sistema se usan para aceleración GPU (nvenc/vaapi/amf/mediacodec, etc.). Si una dependencia no está presente, se avisa y se omite.
@@ -39,6 +41,7 @@ docker compose build               # usa ANDROID_NDK_VERSION=r27b por defecto
 ```
 
 ## Compilar FFmpeg
+
 Salidas en `./output/<version>/<sistema>/<abi>/` (para Linux/Windows el abi es el sistema en si).
 
 ```bash
@@ -46,7 +49,7 @@ Salidas en `./output/<version>/<sistema>/<abi>/` (para Linux/Windows el abi es e
 docker compose run --rm ffmpeg-builder linux
 # Windows estatico x86_64 (exe)
 docker compose run --rm ffmpeg-builder windows
-# Android (itera sobre ANDROID_ABIS de .config)
+# Android (usa ANDROID_ABI de config.sh)
 docker compose run --rm ffmpeg-builder android
 ```
 
@@ -57,8 +60,10 @@ rm -rf ./output/* ./sources/*
 ```
 
 ## Personalizar versiones y librerias
-Edita `config.sh` (versión, librerías por sistema y ABIs de Android) y reconstruye la imagen para regenerar dependencias/NDK si hace falta.
+
+Edita `config.sh` (versión, librerías por sistema y ABI de Android) y reconstruye la imagen para regenerar dependencias/NDK si hace falta.
 
 ## Licencia
+
 - Scripts y Dockerfiles de este repo: MIT (ver `LICENSE`).
 - Binarios/resultados generados: se construyen con `--enable-gpl --enable-version3` y librerías GPL/GPLv3+, por lo que deben distribuirse bajo GPLv3 o compatible. No se incluyen componentes nonfree.

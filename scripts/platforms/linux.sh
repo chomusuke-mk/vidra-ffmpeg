@@ -18,7 +18,7 @@ function build_linux {
     # Puedes desactivar el fully-static con: FFMPEG_LINUX_STATIC=0
     local linux_static=${FFMPEG_LINUX_STATIC:-1}
     local pkg_config_flags=""
-    local extra_cflags="-Wno-stringop-overflow -Wno-array-bounds"
+    local extra_cflags="-Wno-stringop-overflow -Wno-array-bounds -Wno-unused-function"
     # Siempre empuja el prefix al rpath de compilación para que los checks de ffmpeg encuentren .a/.h
     local extra_ldflags="-L$PREFIX/lib -L$PREFIX/lib64"
     local extra_libs=""
@@ -171,6 +171,7 @@ function build_linux {
 
         echo "--- Exportando resultado ---"
         cp ffmpeg "$output_dir/ffmpeg"
+        cp ffprobe "$output_dir/ffprobe"
 
         if command -v file >/dev/null 2>&1 && file "$output_dir/ffmpeg" | grep -qi "statically linked"; then
             echo "ÉXITO: El binario es estático."

@@ -60,6 +60,9 @@ function build_windows {
     export PKG_CONFIG_SYSROOT_DIR="$WIN_SYSROOT_BASE"
     export LDFLAGS="-static-libgcc -static-libstdc++"
 
+    # GCC (mingw) puede caer en ICE en h264_cabac.c con -O3; bajamos optimizacion.
+    local optflags="-O1"
+
     # Wrap pkg-config to strip any stray libgcc_s references that would reintroduce DLL deps
     local real_pkgconfig pkgconf_wrapper
     real_pkgconfig=$(command -v pkg-config)
@@ -164,6 +167,7 @@ EOF
             --enable-static --disable-shared \
             --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
             --disable-ffplay\
+            --optflags="$optflags" \
             --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC ${MINGW_SUPPRESS_WARNINGS:-}" \
             --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
             --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
@@ -172,5 +176,6 @@ EOF
         make -j$(nproc)
 
         cp ffmpeg.exe "$output_dir/ffmpeg.exe"
+        cp ffprobe.exe "$output_dir/ffprobe.exe"
     done
 }

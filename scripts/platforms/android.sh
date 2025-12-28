@@ -56,11 +56,25 @@ build_android_base_libs() {
         tar -xzf /tmp/openssl.tar.gz -C "$SRC"
         rm /tmp/openssl.tar.gz
     fi
+    local OPENSSL_TARGET
+    case "$ABI" in
+        arm64-v8a) OPENSSL_TARGET="android-arm64" ;;
+        armeabi-v7a|arm|arm-v7n) OPENSSL_TARGET="android-arm" ;;
+        x86) OPENSSL_TARGET="android-x86" ;;
+        x86_64) OPENSSL_TARGET="android-x86_64" ;;
+        *) echo "[WARN] ABI not supported for OpenSSL: $ABI" >&2; return 1 ;;
+    esac
+
+    local openssl_cflags="-fPIE -fPIC -O2"
+    if [ "$ABI" = "arm64-v8a" ]; then
+        # Clang r18 intermittently crashes optimizing ec_key.c at -O2 for arm64; lower opt to avoid the frontend bug.
+        openssl_cflags="-fPIE -fPIC -O1"
+    fi
     ( cd "$SRC/openssl-$OPENSSL_VER" && make distclean >/dev/null 2>&1 || true
-        export ANDROID_NDK_HOME=$NDK ANDROID_NDK=$NDK PATH="$TOOLCHAIN/bin:$PATH" ANDROID_API=$API
+        export ANDROID_NDK_HOME=$NDK ANDROID_NDK=$NDK ANDROID_NDK_ROOT=$NDK PATH="$TOOLCHAIN/bin:$PATH" ANDROID_API=$API
         # Avoid glibc-only fortified sendto/__sendto_chk when targeting Bionic by wiping the global fortify flags here.
-        export CFLAGS="-fPIE -fPIC -O2" CPPFLAGS="" LDFLAGS="-fPIE -pie"
-        ./Configure android-$ABI --prefix=$PREFIX --openssldir=$PREFIX/ssl no-shared no-dso no-tests no-asm no-apps
+        export CFLAGS="$openssl_cflags" CPPFLAGS="" LDFLAGS="-fPIE -pie"
+        ./Configure "$OPENSSL_TARGET" --prefix=$PREFIX --openssldir=$PREFIX/ssl no-shared no-dso no-tests no-asm no-apps
         make -j"$(nproc)" && make install_sw )
 
     # Ensure FFmpeg sees OpenSSL 3.x via pkg-config when GPL is enabled.
@@ -100,10 +114,15 @@ EOF
         tar -xJf /tmp/libxml2.tar.xz -C "$SRC"
         rm /tmp/libxml2.tar.xz
     fi
+    local xml2_cflags="-fPIE -fPIC -O2"
+    if [ "$ABI" = "x86" ]; then
+        # Clang r18 for i686 crashes in libxml2 valid.c with -O2; lower optimization to avoid the frontend bug.
+        xml2_cflags="-fPIE -fPIC -O1"
+    fi
     ( cd "$SRC/libxml2-$XML2_VER" && make distclean >/dev/null 2>&1 || true
         CC="$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang" \
         AR="$TOOLCHAIN/bin/llvm-ar" RANLIB="$TOOLCHAIN/bin/llvm-ranlib" STRIP="$TOOLCHAIN/bin/llvm-strip" \
-        CFLAGS="-fPIE -fPIC -O2" LDFLAGS="-fPIE -pie" XML_SOCKLEN_T=socklen_t \
+        CFLAGS="$xml2_cflags" LDFLAGS="-fPIE -pie" XML_SOCKLEN_T=socklen_t \
         ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --enable-static --disable-shared \
             --without-python --with-lzma=no --with-icu=no --with-zlib=yes --with-iconv=no \
             --without-debug --without-mem-debug --without-run-debug --with-threads=no
@@ -261,6 +280,8 @@ cpu_family = '$cpu_family'
 cpu = '$cpu'
 endian = 'little'
 EOF
+        # Normalize timestamp to dodge Meson clock-skew warnings under host/guest drift
+        touch -d "@$(date +%s)" /tmp/meson-${ABI}.ini 2>/dev/null || touch /tmp/meson-${ABI}.ini
     }
 
     # libogg
@@ -273,8 +294,18 @@ EOF
     # libvorbis
     fetch_src "libvorbis" "1.3.7" "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz"
     ( cd "$SRC/libvorbis-1.3.7" && make distclean >/dev/null 2>&1 || true
-        CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" \
+        local vorbis_cache_vars=""
+        if [ "$ABI" = "x86" ]; then
+            # Cross-compiling to i686 makes configure mis-detect size_t/memcmp; force the cache to avoid invalid redefinitions.
+            vorbis_cache_vars="ac_cv_type_size_t=yes ac_cv_func_memcmp=yes ac_cv_working_alloca_h=yes ac_cv_func_alloca_works=yes ac_cv_func_alloca=yes"
+        fi
+        env $vorbis_cache_vars \
+            CC="$CC" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -L$PREFIX/lib" LIBS="-lm" \
             ./configure --host=${TARGET_HOST} --prefix="$PREFIX" --disable-shared --enable-static --with-pic
+        # clang for i686 does not understand -mno-ieee-fp, but libvorbis injects it for that host; strip it out.
+        if [ "$ABI" = "x86" ]; then
+            find . -name Makefile -print0 | xargs -0 sed -i 's/-mno-ieee-fp//g'
+        fi
         make -j"$(nproc)" && make install )
 
     # opus
@@ -362,9 +393,24 @@ EOF
         x86_64) VPX_TARGET="x86_64-android-gcc" ;;
     esac
     ( cd "$SRC/libvpx-1.13.1" && make distclean >/dev/null 2>&1 || true
-        ./configure --prefix="$PREFIX" --target=$VPX_TARGET --disable-examples --disable-tools --disable-unit-tests \
-            --enable-pic --enable-static --disable-shared --disable-docs --disable-webm-io --disable-libyuv \
-            --disable-runtime-cpu-detect
+        # libvpx only accepts yasm/nasm/auto for --as; default to auto unless we explicitly pick an x86 assembler.
+        local vpx_as_arg="--as=auto"
+        local vpx_env=""
+        if [ "$ABI" = "x86" ] || [ "$ABI" = "x86_64" ]; then
+            # libvpx x86 assembly needs nasm/yasm; clang-as cannot consume .asm with -f elf32/elf64.
+            if command -v yasm >/dev/null 2>&1; then
+                vpx_env="AS=yasm"
+                vpx_as_arg="--as=yasm"
+            else
+                echo "[WARN] yasm missing; falling back to nasm for libvpx x86" >&2
+                vpx_env="AS=nasm"
+                vpx_as_arg="--as=nasm"
+            fi
+        fi
+        env $vpx_env \
+            ./configure --prefix="$PREFIX" --target=$VPX_TARGET --disable-examples --disable-tools --disable-unit-tests \
+                --enable-pic --enable-static --disable-shared --disable-docs --disable-webm-io --disable-libyuv \
+                --disable-runtime-cpu-detect $vpx_as_arg
         make -j"$(nproc)" && make install )
 
     # libwebp
@@ -399,7 +445,7 @@ EOF
         make -j"$(nproc)" && make install )
 
     # libsoxr
-    fetch_src "soxr" "0.1.3" "https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz"
+    fetch_src "soxr" "0.1.3" "https://sourceforge.net/projects/soxr/files/soxr-0.1.3-Source.tar.xz/download"
     ( cd "$SRC/soxr-0.1.3-Source" && rm -rf build-android-$ABI && mkdir -p build-android-$ABI && cd build-android-$ABI
         cmake -G"Unix Makefiles" \
             -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
@@ -440,6 +486,7 @@ EOF
             -DANDROID_ABI=$ABI -DANDROID_PLATFORM=$API -DANDROID_STL=c++_static \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX \
             -DBUILD_SHARED_LIBS=OFF -DENABLE_DOCS=OFF -DENABLE_TESTS=OFF -DENABLE_TOOLS=OFF -DENABLE_EXAMPLES=OFF \
+            -DCMAKE_C_FLAGS_RELEASE="-O2" -DCMAKE_CXX_FLAGS_RELEASE="-O2" \
             -DENABLE_NASM=OFF -DENABLE_CCACHE=OFF -DCONFIG_PIC=1 ..
         make -j"$(nproc)" && make install )
 
@@ -479,12 +526,24 @@ function build_android {
 
     mkdir -p /output
 
-    for ABI in ${ANDROID_ABIS:-"arm64-v8a armeabi-v7a x86 x86_64"}; do
+    local abi_requested=${ANDROID_ABI:-${ANDROID_ABIS:-""}}
+    if [ -z "$abi_requested" ]; then
+        abi_requested="arm64-v8a"
+    fi
+    # If a legacy space-separated list is provided, pick the first entry to avoid mixing artifacts.
+    read -r ABI _ <<<"$abi_requested"
+    if [[ "$abi_requested" == *" "* ]]; then
+        echo "[WARN] ANDROID_ABI contiene multiples valores; usando $ABI" >&2
+    fi
+
+    for ABI in "$ABI"; do
         echo "--- ABI $ABI ---"
 
         arch_extra_flags=""
         neon_flag=""
         stl_triple=""
+        optflags="-O3"
+        warn_suppress="-Wno-unused-function"
         case "$ABI" in
             arm64-v8a)
                 TARGET_HOST="aarch64-linux-android"
@@ -499,6 +558,8 @@ function build_android {
                 CPU="armv7-a"
                 stl_triple="arm-linux-androideabi"
                 neon_flag="--enable-neon"
+                # clang 18 occasionally crashes in libswscale/output.c at -O3 for armv7; lower opt to dodge the frontend ICE.
+                optflags="-O1"
                 ;;
             x86)
                 TARGET_HOST="i686-linux-android"
@@ -513,6 +574,8 @@ function build_android {
                 CPU=""
                 arch_extra_flags="--disable-x86asm"
                 stl_triple="x86_64-linux-android"
+                # Clang r18 can crash optimizing libavutil/xtea.c at -O3 for x86_64; reduce optimization here.
+                optflags="-O1"
                 ;;
             *)
                 echo "[WARN] ABI no soportado: $ABI" >&2
@@ -523,6 +586,8 @@ function build_android {
         export AR=$TOOLCHAIN/bin/llvm-ar
         export CC=$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang
         export CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang++
+        export AS=$CC
+        export ASFLAGS="-c"
         # Use the compiler driver as linker so libvpx (and others) get correct target flags.
         export LD=$CC
         export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
@@ -582,6 +647,7 @@ function build_android {
                 --disable-debug \
                 --disable-doc \
                 --disable-ffplay \
+                --optflags="$optflags $warn_suppress" \
                 ${neon_flag:+$neon_flag} \
                 $arch_extra_flags \
                 ${extra_version_flag:+$extra_version_flag} \
@@ -596,6 +662,7 @@ function build_android {
             output_dir="/output/${version_dir}/android/$ABI"
             mkdir -p "$output_dir"
             cp ffmpeg "$output_dir/ffmpeg"
+            cp ffprobe "$output_dir/ffprobe"
             echo "Hecho. Para probarlo en Android usa: adb push $output_dir/ffmpeg /data/local/tmp/"
         done
     done
