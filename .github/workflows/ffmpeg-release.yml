@@ -86,7 +86,9 @@ jobs:
             variant_suffix="-full"
           fi
 
-          case "${{ matrix.target }}" in
+          target="${{ matrix.target }}"
+
+          case "$target" in
             linux)
               docker compose run --rm ffmpeg-builder linux
               src_dir="output/${version_dir}/linux"
@@ -98,7 +100,7 @@ jobs:
               sys_tag="windows"
               ;;
             android-*)
-              abi="${{ matrix.target#android- }}"
+              abi="${target#android-}"
               export ANDROID_ABI="$abi"
               docker compose run --rm ffmpeg-builder android
               src_dir="output/${version_dir}/android/$abi"
