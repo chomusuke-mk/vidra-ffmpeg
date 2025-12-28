@@ -73,6 +73,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix script permissions
+        run: |
+          chmod +x scripts/main.sh scripts/common_libs.sh || true
+          find scripts -name "*.sh" -print0 | xargs -0 chmod +x
+
       - name: Build ${{ matrix.target }} (${{ matrix.variant }})
         id: build
         env:
