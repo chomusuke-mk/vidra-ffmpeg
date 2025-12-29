@@ -33,10 +33,14 @@ jobs:
             latest="$INPUT_VERSION"
           else
             latest=$(curl -fsSL "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
-              | jq -r '.[].name | select(test("^n8\\.")) | sub("^n"; "")' | head -n1)
+              | jq -r '.[].name | select(test("^n8\\.[0-9]+(\\.[0-9]+)?$")) | sub("^n"; "")' | head -n1)
           fi
           if [ -z "$latest" ]; then
             echo "No FFmpeg 8.x tag found" >&2
+            exit 1
+          fi
+          if echo "$latest" | grep -q -- "-dev"; then
+            echo "Refusing to use dev snapshot tag: $latest" >&2
             exit 1
           fi
           echo "latest_version=$latest" >> "$GITHUB_OUTPUT"
@@ -96,19 +100,29 @@ jobs:
 
           case "$target" in
             linux)
-              docker compose run --rm ffmpeg-builder linux
+              docker compose run --rm \
+                -e FFMPEG_VERSION="$FFMPEG_VERSION" \
+                -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                ffmpeg-builder linux
               src_dir="output/${version_dir}/linux"
               sys_tag="linux"
               ;;
             windows)
-              docker compose run --rm ffmpeg-builder windows
+              docker compose run --rm \
+                -e FFMPEG_VERSION="$FFMPEG_VERSION" \
+                -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                ffmpeg-builder windows
               src_dir="output/${version_dir}/windows"
               sys_tag="windows"
               ;;
             android-*)
               abi="${target#android-}"
               export ANDROID_ABI="$abi"
-              docker compose run --rm ffmpeg-builder android
+              docker compose run --rm \
+                -e FFMPEG_VERSION="$FFMPEG_VERSION" \
+                -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                -e ANDROID_ABI="$abi" \
+                ffmpeg-builder android
               src_dir="output/${version_dir}/android/$abi"
               sys_tag="android-$abi"
               ;;

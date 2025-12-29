@@ -874,7 +874,8 @@ build_libssh_static() {
         local libssh_ver=${LIBSSH_TARBALL_VER:-0.10.6}
         local tmp=/tmp/libssh-${libssh_ver}.tar.xz
         echo "[libssh] descargando tarball libssh-${libssh_ver} (libssh.org)" >&2
-        curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
+        curl -L --fail --retry 10 --retry-delay 3 --retry-all-errors --retry-connrefused \
+            --connect-timeout 10 --max-time 300 \
             "https://www.libssh.org/files/0.10/libssh-${libssh_ver}.tar.xz" \
             -o "$tmp"
         tar -xJf "$tmp" -C "$SRC_ROOT"
