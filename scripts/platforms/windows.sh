@@ -10,6 +10,7 @@ function prepare_win_sysroot {
     local sanity_pcs=(
         "$WIN_SYSROOT/lib/pkgconfig/libxml-2.0.pc"
         "$WIN_SYSROOT/lib/pkgconfig/libvpl.pc"
+        "$WIN_SYSROOT/lib/pkgconfig/fontconfig.pc"
     )
     local missing=0
     for pc in "${sanity_pcs[@]}"; do
@@ -103,6 +104,7 @@ EOF
 #undef wstat64
 #undef wstat64i32
 
+int stat64(const char *path, struct _stat64 *buf) { return _stat64(path, buf); }
 int wstat64(const wchar_t *path, struct _stat64 *buf) { return _wstat64(path, buf); }
 int wstat64i32(const wchar_t *path, struct _stat64i32 *buf) { return _wstat64i32(path, buf); }
 
@@ -124,14 +126,11 @@ int (__cdecl *__imp_fseeko64)(FILE *, _off64_t, int) = fseeko64;
 _off64_t (__cdecl *__imp_ftello64)(FILE *) = ftello64;
 
 // Provide the import symbols expected by objects built with dllimport decoration.
+int (__cdecl *__imp_stat64)(const char *, struct _stat64 *) = stat64;
 int (__cdecl *__imp__wstat64i32)(const wchar_t *, struct _stat64i32 *) = wstat64i32;
 EOF
     ${CC} -c "$compat_src" -o /tmp/compat_stat64.o
     ar rcs "$compat_lib" /tmp/compat_stat64.o
-
-    build_variant=${FFMPEG_BUILD:-standard}
-    echo ">>> Iniciando compilación para WINDOWS (x86_64) [$build_variant] <<<"
-    echo "[win] Build variant: $build_variant"
 
     build_x264 "x86_64-w64-mingw32" "$PREFIX" "--cross-prefix=${CROSS_PREFIX} --disable-asm"
 
