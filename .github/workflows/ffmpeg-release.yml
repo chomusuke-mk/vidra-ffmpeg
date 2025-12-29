@@ -9,6 +9,14 @@ on:
         description: "Override FFmpeg 8.x version (e.g., 8.0.2). Defaults to latest n8 tag"
         required: false
         type: string
+      target:
+        description: "Optional single target to build (linux|windows|android-<abi>)"
+        required: false
+        type: string
+      variant:
+        description: "Optional variant to build (standard|full)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -88,6 +96,9 @@ jobs:
         env:
           FFMPEG_VERSION: ${{ needs.check-version.outputs.latest_version }}
           FFMPEG_BUILD: ${{ matrix.variant }}
+        if: |
+          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target) &&
+          (github.event.inputs.variant == '' || github.event.inputs.variant == matrix.variant)
         run: |
           version_dir="$FFMPEG_VERSION"
           variant_suffix=""
@@ -144,6 +155,9 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
+        if: |
+          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target) &&
+          (github.event.inputs.variant == '' || github.event.inputs.variant == matrix.variant)
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: artifacts/${{ steps.build.outputs.artifact }}
