@@ -158,6 +158,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist-artifacts
+          # Flatten all build artifacts into a single directory so checksum
+          # generation works without per-artifact subfolders.
+          merge-multiple: true
 
       - name: Publish GitHub release
         env:
