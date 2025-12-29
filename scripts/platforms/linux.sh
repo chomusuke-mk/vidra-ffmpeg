@@ -4,9 +4,11 @@
 source /build/scripts/common_libs.sh
 
 function build_linux {
-    echo ">>> Iniciando compilación para LINUX (Nativo x86_64) <<<"
-
     load_config
+    build_variant=${FFMPEG_BUILD:-standard}
+    echo ">>> Iniciando compilación para LINUX (Nativo x86_64) [$build_variant] <<<"
+    echo "[linux] Build variant: $build_variant"
+
     ensure_sources
     ensure_build_tools
 
@@ -51,43 +53,39 @@ function build_linux {
         build_x264 "x86_64-linux-gnu" "$PREFIX" "--enable-pic --disable-asm"
     fi
 
-    for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
-        echo "[linux] Build variant: $build_variant"
+    local libs feature_flags output_dir version_dir extra_version_flag
+    libs=$(collect_target_libs "linux" "$build_variant")
+    if [[ " $libs " == *" brotli "* ]]; then
+        build_brotli "$PREFIX"
+    fi
+    if [[ " $libs " == *" libvpl "* ]]; then
+        build_libvpl_static "$PREFIX"
+    fi
+    if [[ " $libs " == *" vaapi "* ]]; then
+        build_libva_static "$PREFIX"
+    fi
+    if [[ " $libs " == *" opencl "* ]]; then
+        build_opencl_static "$PREFIX"
+    fi
 
-        local libs feature_flags output_dir version_dir extra_version_flag
-        libs=$(collect_target_libs "linux" "$build_variant")
+    # Texto/subtítulos
+    if [[ " $libs " == *" freetype "* || " $libs " == *" libfreetype "* ]]; then
+        build_freetype "$PREFIX"
+    fi
+    if [[ " $libs " == *" fribidi "* || " $libs " == *" libfribidi "* ]]; then
+        build_fribidi "$PREFIX"
+    fi
+    if [[ " $libs " == *" harfbuzz "* || " $libs " == *" libharfbuzz "* ]]; then
+        build_harfbuzz "$PREFIX"
+    fi
+    if [[ " $libs " == *" libass "* ]]; then
+        build_libass "$PREFIX"
+    fi
 
-        if [[ " $libs " == *" brotli "* ]]; then
-            build_brotli "$PREFIX"
-        fi
-        if [[ " $libs " == *" libvpl "* ]]; then
-            build_libvpl_static "$PREFIX"
-        fi
-        if [[ " $libs " == *" vaapi "* ]]; then
-            build_libva_static "$PREFIX"
-        fi
-        if [[ " $libs " == *" opencl "* ]]; then
-            build_opencl_static "$PREFIX"
-        fi
-
-        # Texto/subtítulos
-        if [[ " $libs " == *" freetype "* || " $libs " == *" libfreetype "* ]]; then
-            build_freetype "$PREFIX"
-        fi
-        if [[ " $libs " == *" fribidi "* || " $libs " == *" libfribidi "* ]]; then
-            build_fribidi "$PREFIX"
-        fi
-        if [[ " $libs " == *" harfbuzz "* || " $libs " == *" libharfbuzz "* ]]; then
-            build_harfbuzz "$PREFIX"
-        fi
-        if [[ " $libs " == *" libass "* ]]; then
-            build_libass "$PREFIX"
-        fi
-
-        # Codecs adicionales
-        if [[ " $libs " == *" dav1d "* || " $libs " == *" libdav1d "* ]]; then
-            build_dav1d "$PREFIX"
-        fi
+    # Codecs adicionales
+    if [[ " $libs " == *" dav1d "* || " $libs " == *" libdav1d "* ]]; then
+        build_dav1d "$PREFIX"
+    fi
         if [[ " $libs " == *" soxr "* || " $libs " == *" libsoxr "* ]]; then
             build_soxr "$PREFIX"
         fi
@@ -182,5 +180,4 @@ function build_linux {
                 echo "INFO: El binario es dinámico (modo shared)."
             fi
         fi
-    done
 }

@@ -34,11 +34,13 @@ function prepare_win_sysroot {
 }
 
 function build_windows {
-    echo ">>> Iniciando compilación para WINDOWS (x86_64) <<<"
+    load_config
+    build_variant=${FFMPEG_BUILD:-standard}
+    echo ">>> Iniciando compilación para WINDOWS (x86_64) [$build_variant] <<<"
+    echo "[win] Build variant: $build_variant"
 
     echo "[win-deps] Politica: se intenta binario 100% estático; si alguna lib solo existe como DLL, debe ir junto a ffmpeg.exe con su licencia."
 
-    load_config
     ensure_sources
 
     prepare_win_sysroot
@@ -101,7 +103,6 @@ EOF
 #undef wstat64
 #undef wstat64i32
 
-int stat64(const char *path, struct _stat64 *buf) { return _stat64(path, buf); }
 int wstat64(const wchar_t *path, struct _stat64 *buf) { return _wstat64(path, buf); }
 int wstat64i32(const wchar_t *path, struct _stat64i32 *buf) { return _wstat64i32(path, buf); }
 
@@ -128,54 +129,54 @@ EOF
     ${CC} -c "$compat_src" -o /tmp/compat_stat64.o
     ar rcs "$compat_lib" /tmp/compat_stat64.o
 
+    build_variant=${FFMPEG_BUILD:-standard}
+    echo ">>> Iniciando compilación para WINDOWS (x86_64) [$build_variant] <<<"
+    echo "[win] Build variant: $build_variant"
+
     build_x264 "x86_64-w64-mingw32" "$PREFIX" "--cross-prefix=${CROSS_PREFIX} --disable-asm"
 
-    for build_variant in ${FFMPEG_BUILDS_LIST:-standard}; do
-        echo "[win] Build variant: $build_variant"
+    local libs feature_flags version_dir output_dir extra_version_flag
+    libs=$(collect_target_libs "windows" "$build_variant")
+    # Enable NVENC/ffnvcodec automatically when requested in config.sh for Windows builds.
+    if [[ " $libs " == *" nvcodec "* ]] && [ -z "${FFMPEG_ALLOW_NVENC:-}" ]; then
+        export FFMPEG_ALLOW_NVENC=1
+    fi
+    feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
+    if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
+        echo "[win-deps] ERROR: No se resolvieron flags para las libs solicitadas ($libs). Revisa pkg-config paths y sysroot." >&2
+        exit 1
+    fi
 
-        local libs feature_flags version_dir output_dir extra_version_flag
-        libs=$(collect_target_libs "windows" "$build_variant")
-        # Enable NVENC/ffnvcodec automatically when requested in config.sh for Windows builds.
-        if [[ " $libs " == *" nvcodec "* ]] && [ -z "${FFMPEG_ALLOW_NVENC:-}" ]; then
-            export FFMPEG_ALLOW_NVENC=1
-        fi
-        feature_flags=$(ffmpeg_feature_flags "windows" "$libs")
-        if [ -n "$libs" ] && [ -z "$feature_flags" ]; then
-            echo "[win-deps] ERROR: No se resolvieron flags para las libs solicitadas ($libs). Revisa pkg-config paths y sysroot." >&2
-            exit 1
-        fi
+    extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
+    version_dir=$(version_dir_for_variant "$build_variant")
+    output_dir="/output/${version_dir}/windows"
+    mkdir -p "$output_dir"
 
-        extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
-        version_dir=$(version_dir_for_variant "$build_variant")
-        output_dir="/output/${version_dir}/windows"
-        mkdir -p "$output_dir"
+    cd /build/sources/ffmpeg-$FFMPEG_VER
+    make distclean >/dev/null 2>&1 || true
+    ./configure \
+        --target-os=mingw32 \
+        --arch=x86_64 \
+        --cross-prefix=$CROSS_PREFIX \
+        --prefix=$PREFIX \
+        --pkg-config=$PKG_CONFIG \
+        --pkg-config-flags="--static" \
+        --enable-gpl \
+        --enable-version3 \
+        --disable-w32threads \
+        --enable-pthreads \
+        ${extra_version_flag:+$extra_version_flag} \
+        --enable-static --disable-shared \
+        --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
+        --disable-ffplay\
+        --optflags="$optflags" \
+        --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC ${MINGW_SUPPRESS_WARNINGS:-}" \
+        --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
+        --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
+        $feature_flags
 
-        cd /build/sources/ffmpeg-$FFMPEG_VER
-        make distclean >/dev/null 2>&1 || true
-        ./configure \
-            --target-os=mingw32 \
-            --arch=x86_64 \
-            --cross-prefix=$CROSS_PREFIX \
-            --prefix=$PREFIX \
-            --pkg-config=$PKG_CONFIG \
-            --pkg-config-flags="--static" \
-            --enable-gpl \
-            --enable-version3 \
-            --disable-w32threads \
-            --enable-pthreads \
-            ${extra_version_flag:+$extra_version_flag} \
-            --enable-static --disable-shared \
-            --disable-debug --disable-doc --disable-manpages --disable-htmlpages \
-            --disable-ffplay\
-            --optflags="$optflags" \
-            --extra-cflags="-static -std=gnu11 -I$PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC ${MINGW_SUPPRESS_WARNINGS:-}" \
-            --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
-            --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
-            $feature_flags
+    make -j$(nproc)
 
-        make -j$(nproc)
-
-        cp ffmpeg.exe "$output_dir/ffmpeg.exe"
-        cp ffprobe.exe "$output_dir/ffprobe.exe"
-    done
+    cp ffmpeg.exe "$output_dir/ffmpeg.exe"
+    cp ffprobe.exe "$output_dir/ffprobe.exe"
 }

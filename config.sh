@@ -21,5 +21,5 @@ LIBS_WINDOWS_EXTENDED="libvpl nvcodec dxva2 d3d11va"
 # ABI soportado (uno a la vez): armeabi-v7a | arm64-v8a | x86 | x86_64.
 ANDROID_ABI="armeabi-v7a"
 
-# builds "full standard"
-FFMPEG_BUILDS="standard"
+# Build variant: standard | full
+FFMPEG_BUILD="standard"
