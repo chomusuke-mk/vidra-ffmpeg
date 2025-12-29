@@ -103,6 +103,7 @@ jobs:
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
                 -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                -e FFMPEG_BUILDS_LIST="$FFMPEG_BUILDS" \
                 ffmpeg-builder linux
               src_dir="output/${version_dir}/linux"
               sys_tag="linux"
@@ -111,6 +112,7 @@ jobs:
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
                 -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                -e FFMPEG_BUILDS_LIST="$FFMPEG_BUILDS" \
                 ffmpeg-builder windows
               src_dir="output/${version_dir}/windows"
               sys_tag="windows"
@@ -121,6 +123,7 @@ jobs:
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
                 -e FFMPEG_BUILDS="$FFMPEG_BUILDS" \
+                -e FFMPEG_BUILDS_LIST="$FFMPEG_BUILDS" \
                 -e ANDROID_ABI="$abi" \
                 ffmpeg-builder android
               src_dir="output/${version_dir}/android/$abi"
