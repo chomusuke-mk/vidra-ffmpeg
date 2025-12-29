@@ -41,11 +41,11 @@ jobs:
           if [ -n "$INPUT_VERSION" ]; then
             latest="$INPUT_VERSION"
           else
-            auth_header=""
+            headers=()
             if [ -n "$GH_TOKEN" ]; then
-              auth_header="-H Authorization: Bearer $GH_TOKEN"
+              headers+=( -H "Authorization: Bearer $GH_TOKEN" )
             fi
-            latest=$(curl -fsSL $auth_header "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
+            latest=$(curl -fsSL "${headers[@]}" "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
               | jq -r '.[].name | select(test("^n8\\.[0-9]+(\\.[0-9]+)?$")) | sub("^n"; "")' | head -n1)
           fi
           if [ -z "$latest" ]; then
