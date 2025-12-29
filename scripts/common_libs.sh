@@ -79,6 +79,7 @@ function _fetch_source_bundle {
 function load_config {
     local env_android_abi=${ANDROID_ABI:-}
     local env_android_abis_legacy=${ANDROID_ABIS:-}
+    local env_ffmpeg_builds=${FFMPEG_BUILDS:-}
     if [ -f "$CONFIG_FILE" ]; then
         # shellcheck disable=SC1090
         source "$CONFIG_FILE"
@@ -107,7 +108,13 @@ function load_config {
         ANDROID_ABI=${env_android_abi:-${ANDROID_ABI:-$ANDROID_ABI_DEFAULT}}
     fi
     FFMPEG_EXTRA_VERSION=${EXTRA_VERSION:-$FFMPEG_EXTRA_VERSION}
-    FFMPEG_BUILDS_LIST=${FFMPEG_BUILDS:-$FFMPEG_BUILDS_LIST}
+
+    # Honor env override for build variants if present; otherwise fall back to config/default.
+    if [ -n "$env_ffmpeg_builds" ]; then
+        FFMPEG_BUILDS_LIST="$env_ffmpeg_builds"
+    else
+        FFMPEG_BUILDS_LIST=${FFMPEG_BUILDS:-$FFMPEG_BUILDS_LIST}
+    fi
     if [ -z "$FFMPEG_BUILDS_LIST" ]; then
         FFMPEG_BUILDS_LIST="standard"
     fi
