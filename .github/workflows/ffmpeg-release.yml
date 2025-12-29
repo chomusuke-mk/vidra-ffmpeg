@@ -36,11 +36,16 @@ jobs:
         id: discover
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -n "$INPUT_VERSION" ]; then
             latest="$INPUT_VERSION"
           else
-            latest=$(curl -fsSL "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
+            auth_header=""
+            if [ -n "$GH_TOKEN" ]; then
+              auth_header="-H Authorization: Bearer $GH_TOKEN"
+            fi
+            latest=$(curl -fsSL $auth_header "https://api.github.com/repos/FFmpeg/FFmpeg/tags?per_page=30" \
               | jq -r '.[].name | select(test("^n8\\.[0-9]+(\\.[0-9]+)?$")) | sub("^n"; "")' | head -n1)
           fi
           if [ -z "$latest" ]; then
