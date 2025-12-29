@@ -58,6 +58,7 @@ jobs:
         id: skip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="ffmpeg-${{ steps.discover.outputs.latest_version }}"
           echo "Checking release tag: $tag"
