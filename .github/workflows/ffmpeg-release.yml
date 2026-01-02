@@ -215,11 +215,48 @@ jobs:
           gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --armor -o SHA2-256SUMS.sig SHA2-256SUMS
           gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --armor -o SHA2-512SUMS.sig SHA2-512SUMS
 
-          # Update helper file
+          # Update helper file (publicado como asset del release)
+          # - Mantiene claves existentes: version/tag/timestamp
+          # - Añade mapeos estables para updaters:
+          #   upgrade.<id>=<canonical_id>
+          #   file.<id>=<filename>
+          # Donde <id> puede ser con guiones o con guiones bajos; el canonical_id usa guiones bajos.
           {
             echo "version=$ver"
             echo "tag=$tag"
             echo "timestamp=$(date -u +%FT%TZ)"
+            echo ""
+            echo "# Mappings: upgrade.* => canonical id"
+            echo "#           file.*    => release asset filename"
+
+            mapfile -t zips < <(ls -1 *.zip 2>/dev/null | sort)
+            upgrades=()
+            files=()
+
+            for f in "${zips[@]}"; do
+              base="${f%.zip}"
+              rest="${base#ffmpeg-$ver-}"
+              if [ "$rest" = "$base" ]; then
+                continue
+              fi
+
+              # Canonical "location" usa guiones (más legible y coincide con los nombres actuales).
+              id_dash="$rest"
+              id_us="${id_dash//-/_}"
+
+              # Canonical
+              upgrades+=("upgrade.$id_dash=$id_dash")
+              files+=("file.$id_dash=$f")
+
+              # Alias con guiones bajos (por compatibilidad con updaters que no aceptan '-')
+              if [ "$id_us" != "$id_dash" ]; then
+                upgrades+=("upgrade.$id_us=$id_dash")
+                files+=("file.$id_us=$f")
+              fi
+            done
+
+            printf '%s\n' "${upgrades[@]}" | sort -u
+            printf '%s\n' "${files[@]}" | sort -u
           } > _update
 
           cd ..
