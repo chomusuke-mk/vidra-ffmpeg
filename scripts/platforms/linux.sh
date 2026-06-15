@@ -5,9 +5,7 @@ source /build/scripts/common_libs.sh
 
 function build_linux {
     load_config
-    build_variant=${FFMPEG_BUILD:-standard}
-    echo ">>> Iniciando compilación para LINUX (Nativo x86_64) [$build_variant] <<<"
-    echo "[linux] Build variant: $build_variant"
+    echo ">>> Iniciando compilación para LINUX (Nativo x86_64) <<<"
 
     ensure_sources
     ensure_build_tools
@@ -54,7 +52,7 @@ function build_linux {
     fi
 
     local libs feature_flags output_dir version_dir extra_version_flag
-    libs=$(collect_target_libs "linux" "$build_variant")
+    libs=$(collect_target_libs "linux")
     if [[ " $libs " == *" brotli "* ]]; then
         build_brotli "$PREFIX"
     fi
@@ -139,8 +137,8 @@ function build_linux {
                 forced_flags+=" --enable-vulkan"
             fi
         fi
-        extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
-        version_dir=$(version_dir_for_variant "$build_variant")
+        extra_version_flag=$(ffmpeg_extra_version_flag)
+        version_dir=$(version_dir_for_variant)
         output_dir="/output/${version_dir}/linux"
 
         mkdir -p "$output_dir"

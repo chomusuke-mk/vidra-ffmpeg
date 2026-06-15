@@ -16,5 +16,5 @@ services:
       - ./scripts:/build/scripts:ro
     working_dir: /build
     entrypoint: ["/build/scripts/main.sh"]
-    # Comando por defecto; puedes sobreescribir con docker compose run ffmpeg-builder <target>
+    # Comando por defecto; puedes sobrescribir con docker compose run ffmpeg-builder <target>
     command: ["linux"]

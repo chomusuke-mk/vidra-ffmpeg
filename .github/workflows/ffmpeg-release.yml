@@ -90,9 +90,6 @@ jobs:
           - android-armeabi-v7a
           - android-x86
           - android-x86_64
-        variant:
-          - standard
-          - full
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,17 +103,10 @@ jobs:
         id: build
         env:
           FFMPEG_VERSION: ${{ needs.check-version.outputs.latest_version }}
-          FFMPEG_BUILD: ${{ matrix.variant }}
         if: |
-          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target) &&
-          (github.event.inputs.variant == '' || github.event.inputs.variant == matrix.variant)
+          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target)
         run: |
           version_dir="$FFMPEG_VERSION"
-          variant_suffix=""
-          if [ "$FFMPEG_BUILD" = "full" ]; then
-            version_dir="${FFMPEG_VERSION}-full"
-            variant_suffix="-full"
-          fi
 
           target="${{ matrix.target }}"
 
@@ -124,7 +114,6 @@ jobs:
             linux)
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
-                -e FFMPEG_BUILD="$FFMPEG_BUILD" \
                 ffmpeg-builder linux
               src_dir="output/${version_dir}/linux"
               sys_tag="linux"
@@ -132,7 +121,6 @@ jobs:
             windows)
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
-                -e FFMPEG_BUILD="$FFMPEG_BUILD" \
                 ffmpeg-builder windows
               src_dir="output/${version_dir}/windows"
               sys_tag="windows"
@@ -142,7 +130,6 @@ jobs:
               export ANDROID_ABI="$abi"
               docker compose run --rm \
                 -e FFMPEG_VERSION="$FFMPEG_VERSION" \
-                -e FFMPEG_BUILD="$FFMPEG_BUILD" \
                 -e ANDROID_ABI="$abi" \
                 ffmpeg-builder android
               src_dir="output/${version_dir}/android/$abi"
@@ -155,7 +142,7 @@ jobs:
           esac
 
           mkdir -p artifacts
-          artifact="ffmpeg-${FFMPEG_VERSION}${variant_suffix}-${sys_tag}.zip"
+          artifact="ffmpeg-${FFMPEG_VERSION}-${sys_tag}.zip"
           dest="$(pwd)/artifacts/$artifact"
           if [ ! -d "$src_dir" ]; then
             echo "Missing output directory: $src_dir" >&2
@@ -167,8 +154,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: |
-          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target) &&
-          (github.event.inputs.variant == '' || github.event.inputs.variant == matrix.variant)
+          (github.event.inputs.target == '' || github.event.inputs.target == matrix.target)
         with:
           name: ${{ steps.build.outputs.artifact }}
           path: artifacts/${{ steps.build.outputs.artifact }}

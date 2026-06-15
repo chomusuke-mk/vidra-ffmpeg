@@ -36,9 +36,7 @@ function prepare_win_sysroot {
 
 function build_windows {
     load_config
-    build_variant=${FFMPEG_BUILD:-standard}
-    echo ">>> Iniciando compilación para WINDOWS (x86_64) [$build_variant] <<<"
-    echo "[win] Build variant: $build_variant"
+    echo ">>> Iniciando compilación para WINDOWS (x86_64) <<<"
 
     echo "[win-deps] Politica: se intenta binario 100% estático; si alguna lib solo existe como DLL, debe ir junto a ffmpeg.exe con su licencia."
 
@@ -135,7 +133,7 @@ EOF
     build_x264 "x86_64-w64-mingw32" "$PREFIX" "--cross-prefix=${CROSS_PREFIX} --disable-asm"
 
     local libs feature_flags version_dir output_dir extra_version_flag
-    libs=$(collect_target_libs "windows" "$build_variant")
+    libs=$(collect_target_libs "windows")
     # Enable NVENC/ffnvcodec automatically when requested in config.sh for Windows builds.
     if [[ " $libs " == *" nvcodec "* ]] && [ -z "${FFMPEG_ALLOW_NVENC:-}" ]; then
         export FFMPEG_ALLOW_NVENC=1
@@ -146,8 +144,8 @@ EOF
         exit 1
     fi
 
-    extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
-    version_dir=$(version_dir_for_variant "$build_variant")
+    extra_version_flag=$(ffmpeg_extra_version_flag)
+    version_dir=$(version_dir_for_variant)
     output_dir="/output/${version_dir}/windows"
     mkdir -p "$output_dir"
 

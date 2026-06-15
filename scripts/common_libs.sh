@@ -11,16 +11,11 @@ FFMPEG_LIBS_COMMON=""
 FFMPEG_LIBS_LINUX=""
 FFMPEG_LIBS_WINDOWS=""
 FFMPEG_LIBS_ANDROID=""
-FFMPEG_LIBS_COMMON_EXTENDED=""
-FFMPEG_LIBS_LINUX_EXTENDED=""
-FFMPEG_LIBS_WINDOWS_EXTENDED=""
-FFMPEG_LIBS_ANDROID_EXTENDED=""
-FFMPEG_BUILD_DEFAULT="standard"
 ANDROID_ABI_DEFAULT="arm64-v8a"
 
 # Paquetes base reutilizables para todos los SO; solo se descargan (no se compilan).
 COMMON_SRC_BUNDLES=(
-    "zlib|1.3.1|https://zlib.net/zlib-1.3.1.tar.gz"
+    "zlib|1.3.1|https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz"
     "brotli|1.1.0|https://github.com/google/brotli/archive/refs/tags/v1.1.0.tar.gz"
     "openssl|3.3.2|https://www.openssl.org/source/openssl-3.3.2.tar.gz"
     "expat|2.6.4|https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.gz"
@@ -79,7 +74,6 @@ function _fetch_source_bundle {
 function load_config {
     local env_android_abi=${ANDROID_ABI:-}
     local env_android_abis_legacy=${ANDROID_ABIS:-}
-    local env_ffmpeg_build=${FFMPEG_BUILD:-${FFMPEG_BUILDS:-}}
     if [ -f "$CONFIG_FILE" ]; then
         # shellcheck disable=SC1090
         source "$CONFIG_FILE"
@@ -95,10 +89,6 @@ function load_config {
     FFMPEG_LIBS_LINUX=${LIBS_LINUX:-}
     FFMPEG_LIBS_WINDOWS=${LIBS_WINDOWS:-}
     FFMPEG_LIBS_ANDROID=${LIBS_ANDROID:-}
-    FFMPEG_LIBS_COMMON_EXTENDED=${LIBS_COMMON_EXTENDED:-}
-    FFMPEG_LIBS_LINUX_EXTENDED=${LIBS_LINUX_EXTENDED:-}
-    FFMPEG_LIBS_WINDOWS_EXTENDED=${LIBS_WINDOWS_EXTENDED:-}
-    FFMPEG_LIBS_ANDROID_EXTENDED=${LIBS_ANDROID_EXTENDED:-}
 
     # Single-ABI selection for Android builds; honor legacy ANDROID_ABIS for compatibility (first token only).
     if [ -z "${ANDROID_ABI:-}" ] && [ -n "$env_android_abis_legacy" ]; then
@@ -108,21 +98,6 @@ function load_config {
         ANDROID_ABI=${env_android_abi:-${ANDROID_ABI:-$ANDROID_ABI_DEFAULT}}
     fi
     FFMPEG_EXTRA_VERSION=${EXTRA_VERSION:-$FFMPEG_EXTRA_VERSION}
-
-    # Select single build variant (standard|full); env > config > default.
-    if [ -n "$env_ffmpeg_build" ]; then
-        FFMPEG_BUILD="$env_ffmpeg_build"
-    elif [ -n "${FFMPEG_BUILD:-}" ]; then
-        FFMPEG_BUILD="$FFMPEG_BUILD"
-    elif [ -n "${FFMPEG_BUILDS:-}" ]; then
-        FFMPEG_BUILD="$FFMPEG_BUILDS"
-    else
-        FFMPEG_BUILD="$FFMPEG_BUILD_DEFAULT"
-    fi
-
-    if [ -z "$FFMPEG_BUILD" ]; then
-        FFMPEG_BUILD="$FFMPEG_BUILD_DEFAULT"
-    fi
 
     # Provide a default set of warning suppressions for mingw unless the user overrides it.
     MINGW_SUPPRESS_WARNINGS=${MINGW_SUPPRESS_WARNINGS:-$MINGW_SUPPRESS_DEFAULT}
@@ -188,7 +163,7 @@ function ensure_sources {
     fi
 
     # Prefetch bundles comunes reutilizables entre OS/ABIs para evitar descargas por separado.
-    local requested_libs=" $FFMPEG_LIBS_COMMON $FFMPEG_LIBS_LINUX $FFMPEG_LIBS_WINDOWS $FFMPEG_LIBS_ANDROID $FFMPEG_LIBS_COMMON_EXTENDED $FFMPEG_LIBS_LINUX_EXTENDED $FFMPEG_LIBS_WINDOWS_EXTENDED $FFMPEG_LIBS_ANDROID_EXTENDED "
+    local requested_libs=" $FFMPEG_LIBS_COMMON $FFMPEG_LIBS_LINUX $FFMPEG_LIBS_WINDOWS $FFMPEG_LIBS_ANDROID "
     for bundle in "${COMMON_SRC_BUNDLES[@]}"; do
         IFS="|" read -r name _ url <<<"$bundle"
         if [[ "$requested_libs" != *" $name "* ]]; then
@@ -978,7 +953,6 @@ function collect_target_libs {
     local target=$1
     local variant=${2:-standard}
     local libs="$FFMPEG_LIBS_COMMON"
-    local extended="$FFMPEG_LIBS_COMMON_EXTENDED"
 
     case "$variant" in
         standard|full) ;;
@@ -991,22 +965,15 @@ function collect_target_libs {
     case "$target" in
         linux)
             libs="$libs $FFMPEG_LIBS_LINUX"
-            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_LINUX_EXTENDED"
             ;;
         windows)
             libs="$libs $FFMPEG_LIBS_WINDOWS"
-            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_WINDOWS_EXTENDED"
             ;;
         android)
             # Para Android habilitamos comunes + específicos (los faltantes se avisan vía pkg-config).
             libs="$libs $FFMPEG_LIBS_ANDROID"
-            [ "$variant" = "full" ] && extended="$extended $FFMPEG_LIBS_ANDROID_EXTENDED"
             ;;
     esac
-
-    if [ "$variant" = "full" ]; then
-        libs="$libs $extended"
-    fi
 
     # TLS backend rules:
     # - schannel is Windows-only; drop it on other platforms.
@@ -1057,7 +1024,13 @@ function prepare_nvcodec_headers {
     if [ ! -d "$SRC_ROOT/nv-codec-headers/.git" ]; then
         echo "--- Descargando nv-codec-headers (para NVENC/CUDA) ---"
         rm -rf "$SRC_ROOT/nv-codec-headers"
-        git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers "$SRC_ROOT/nv-codec-headers"
+				# fetch 
+				local tmp="/tmp/nv-codec-headers.tar.gz"
+				curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors "https://github.com/FFmpeg/nv-codec-headers/archive/refs/tags/n13.0.19.0.tar.gz" -o "$tmp"
+				mkdir -p "$SRC_ROOT/nv-codec-headers"
+				tar -xzf "$tmp" --strip-components=1 -C "$SRC_ROOT/nv-codec-headers"
+				rm -f "$tmp"
+				touch "$SRC_ROOT/nv-codec-headers/.git" # Marca como no git para evitar re-clones innecesarios.
     fi
 
     # Ensure headers are installed where the cross compiler will look for them.
@@ -1422,25 +1395,9 @@ function ffmpeg_feature_flags {
 }
 
 function ffmpeg_extra_version_flag {
-    local variant=${1:-}
-    local extra=${FFMPEG_EXTRA_VERSION:-}
-
-    if [ "$variant" = "full" ]; then
-        if [ -n "$extra" ]; then
-            echo "--extra-version=full-$extra"
-        else
-            echo "--extra-version=full"
-        fi
-    elif [ -n "$extra" ]; then
-        echo "--extra-version=${extra}"
-    fi
+    echo "--extra-version=${FFMPEG_EXTRA_VERSION:-}"
 }
 
 function version_dir_for_variant {
-    local variant=${1:-standard}
-    if [ "$variant" = "full" ]; then
-        echo "${FFMPEG_VER}-full"
-    else
-        echo "${FFMPEG_VER}"
-    fi
+    echo "${FFMPEG_VER}"
 }

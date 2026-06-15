@@ -1,7 +1,3 @@
-docker compose run --rm ffmpeg-builder linux
-docker compose run --rm ffmpeg-builder windows
-docker compose run --rm ffmpeg-builder android
-
 # Vidra FFmpeg builder
 
 Entorno Docker para compilar FFmpeg estático en Linux (x86_64), Windows (x86_64 via MinGW-w64) y Android (ABI seleccionable). Usa la configuración de `config.sh` para fijar versión y librerías por sistema.
@@ -10,7 +6,7 @@ Entorno Docker para compilar FFmpeg estático en Linux (x86_64), Windows (x86_64
 
 - Docker y Docker Compose.
 - Espacio para NDK (~2 GB) y fuentes cacheadas en `./sources`.
-- Conexion en el primer uso para descargar NDK, FFmpeg y x264.
+- Conexión en el primer uso para descargar NDK, FFmpeg y x264.
 
 ## Configuración (`config.sh`)
 
@@ -45,21 +41,21 @@ docker compose build               # usa ANDROID_NDK_VERSION=r27b por defecto
 Salidas en `./output/<version>/<sistema>/<abi>/` (para Linux/Windows el abi es el sistema en si).
 
 ```bash
-# Linux estatico x86_64
+# Linux estático x86_64
 docker compose run --rm ffmpeg-builder linux
-# Windows estatico x86_64 (exe)
+# Windows estático x86_64 (exe)
 docker compose run --rm ffmpeg-builder windows
 # Android (usa ANDROID_ABI de config.sh)
 docker compose run --rm ffmpeg-builder android
 ```
 
-## Limpieza rapida
+## Limpieza rápida
 
 ```bash
 rm -rf ./output/* ./sources/*
 ```
 
-## Personalizar versiones y librerias
+## Personalizar versiones y librerías
 
 Edita `config.sh` (versión, librerías por sistema y ABI de Android) y reconstruye la imagen para regenerar dependencias/NDK si hace falta.
 

@@ -1,4 +1,5 @@
 # check=skip=UndefinedVar
+# check=skip=DL4006
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive

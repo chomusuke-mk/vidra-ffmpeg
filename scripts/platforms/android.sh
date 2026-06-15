@@ -1,6 +1,7 @@
 #!/bin/bash
 # scripts/platforms/android.sh
 
+# shellcheck disable=SC1091
 source /build/scripts/common_libs.sh
 
 # Build base libs for a given ABI to avoid manual, per-lib invocations.
@@ -511,9 +512,7 @@ EOF
 
 function build_android {
     load_config
-    build_variant=${FFMPEG_BUILD:-standard}
-    echo ">>> Iniciando compilacion para ANDROID (prefetch) [$build_variant] <<<"
-    echo "[android] Build variant: $build_variant"
+    echo ">>> Iniciando compilacion para ANDROID (prefetch) <<<"
 
     ensure_sources
 
@@ -610,8 +609,7 @@ function build_android {
 
         mkdir -p "$PREFIX" "$PKG_CONFIG_PATH"
 
-        echo ">>> Iniciando compilacion para ANDROID $ABI (API $API) [$build_variant] <<<"
-        echo "[android:$ABI] Build variant: $build_variant"
+        echo ">>> Iniciando compilacion para ANDROID $ABI (API $API) <<<"
 
         build_android_base_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT"
         build_android_render_libs "$ABI" "$API" "$NDK" "$PREFIX" "$SRC_ROOT"
@@ -620,9 +618,9 @@ function build_android {
         build_x264 "$TARGET_HOST" "$PREFIX" "--cross-prefix=$TOOLCHAIN/bin/llvm- --disable-asm --enable-pic --disable-cli"
 
         local libs feature_flags version_dir output_dir extra_version_flag
-        libs=$(collect_target_libs "android" "$build_variant")
+        libs=$(collect_target_libs "android")
         feature_flags=$(ffmpeg_feature_flags "android" "$libs")
-        extra_version_flag=$(ffmpeg_extra_version_flag "$build_variant")
+        extra_version_flag=$(ffmpeg_extra_version_flag)
 
         echo "--- Compilando FFmpeg (Android $ABI) ---"
         cd /build/sources/ffmpeg-$FFMPEG_VER
@@ -660,7 +658,7 @@ function build_android {
 
         make -j$(nproc)
 
-        version_dir=$(version_dir_for_variant "$build_variant")
+        version_dir=$(version_dir_for_variant)
         output_dir="/output/${version_dir}/android/$ABI"
         mkdir -p "$output_dir"
         cp ffmpeg "$output_dir/ffmpeg"
