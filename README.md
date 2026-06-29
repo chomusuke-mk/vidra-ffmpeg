@@ -52,7 +52,7 @@ docker compose run --rm ffmpeg-builder android
 ## Limpieza rápida
 
 ```bash
-rm -rf ./output/* ./sources/*
+rm -rf ./output/* ./sources/* 
 ```
 
 ## Personalizar versiones y librerías
