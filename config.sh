@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export FFMPEG_VERSION=8.1.1
+export FFMPEG_VERSION=8.0.1
 export EXTRA_VERSION="vidra_build-chomusuke.dev"
 
 # Librerías comunes (All en libraries.md)

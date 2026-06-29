@@ -197,9 +197,13 @@ function ensure_sources {
         local ocl_headers="$SRC_ROOT/OpenCL-Headers"
         local ocl_loader="$SRC_ROOT/OpenCL-ICD-Loader"
         if [ ! -d "$ocl_headers/.git" ]; then
-            echo "--- Descargando OpenCL-Headers (main) ---"
+            echo "--- Descargando OpenCL-Headers (v2025.07.22) ---"
             rm -rf "$ocl_headers"
-            git clone --depth 1 https://github.com/KhronosGroup/OpenCL-Headers.git "$ocl_headers"
+						curl -L --fail --retry 5 --retry-delay 2 --retry-all-errors "https://github.com/KhronosGroup/OpenCL-Headers/archive/v2025.07.22.tar.gz" -o /tmp/OpenCL-Headers.tar.gz
+            tar -xzf /tmp/OpenCL-Headers.tar.gz -C "$SRC_ROOT"
+            mv "$SRC_ROOT/OpenCL-Headers-2025.07.22" "$ocl_headers"
+            rm /tmp/OpenCL-Headers.tar.gz
+						touch "$ocl_headers/.git" # Mark as "fetched" to avoid re-downloading the full repo when loader also requested
         fi
         if [ ! -d "$ocl_loader/.git" ]; then
             echo "--- Descargando OpenCL-ICD-Loader ($OPENCL_LOADER_REF) ---"
