@@ -4,7 +4,7 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 # 1. Instalar dependencias
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
   autoconf automake libtool libtool-bin cmake ninja-build meson \
   python3 python3-pip zstd gperf \
@@ -31,11 +31,11 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86
   && dpkg -i /tmp/cuda-keyring.deb \
   && rm /tmp/cuda-keyring.deb \
   && apt-get update \
-  && apt-get install -y cuda-toolkit-12-6 \
+  && apt-get install -y --no-install-recommends cuda-toolkit-12-6 \
   && rm -rf /var/lib/apt/lists/*
 ENV CUDA_HOME=/usr/local/cuda
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
-ENV PATH=${CUDA_HOME}/bin:/opt/android-ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+ENV PATH=${CUDA_HOME}/bin:${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
 
 # copiar herramientas de construcción de la imagen
 COPY docker-builder /docker-builder
