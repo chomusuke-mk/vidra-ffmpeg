@@ -5,6 +5,7 @@ set -e
 TARGET_OS=${1:-"all"}
 TARGET_ARCH=${2:-"all"}
 
+# shellcheck disable=SC1091
 source /config.sh
 
 echo "=== Preparando el entorno ==="
@@ -53,7 +54,7 @@ build_linux() {
         --disable-doc \
         $feature_flags
 
-    make -j$(nproc)
+    make -j"$(nproc)"
 
     mkdir -p /dist/linux-x86_64
     cp ffmpeg /dist/linux-x86_64/ffmpeg
@@ -116,7 +117,7 @@ EOF_INNER
         --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
         $feature_flags
 
-    make -j$(nproc)
+    make -j"$(nproc)"
 
     mkdir -p /dist/windows_x86_64
     cp ffmpeg.exe /dist/windows_x86_64/ffmpeg.exe

@@ -2,6 +2,8 @@
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG TARGET_OS=all
+ARG TARGET_ARCH=all
 
 # 1. Instalar dependencias
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -47,7 +49,7 @@ RUN --mount=type=cache,target=/downloads \
     /docker-builder/download_deps.sh /downloads && \
     /docker-builder/extract_deps.sh /downloads /source && \
     /docker-builder/patch_deps.sh /docker-builder/patches /source && \
-    /docker-builder/build_libs.sh /source /compiled && \
+    /docker-builder/build_libs.sh /source /compiled ${TARGET_OS} ${TARGET_ARCH} && \
     rm -rf /source /docker-builder /var/lib/apt/lists/*
 
 ENV COMPILATION_DIR=/compiled
