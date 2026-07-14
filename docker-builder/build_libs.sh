@@ -193,11 +193,10 @@ compile_windows() {
 	cat > /usr/local/bin/pkg-config-win-static.sh <<EOF_INNER
 #!/usr/bin/env bash
 set -e
-out=$(\"$real_pkgconfig\" "\$@" 2>/dev/null)
+out=\$(\$real_pkgconfig "\$@" 2>/dev/null)
 status=\$?
 if [ "\$status" -ne 0 ]; then exit "\$status"; fi
-printf '%s
-' "\$out" | sed -E 's/(^|[[:space:]])-lgcc_s([^[:space:]]*)//g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^ //; s/ $//'
+printf '%s\n' "\$out" | sed -E 's/(^|[[:space:]])-lgcc_s([^[:space:]]*)//g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^ //; s/ $//'
 EOF_INNER
 	chmod +x /usr/local/bin/pkg-config-win-static.sh
 

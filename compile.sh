@@ -37,7 +37,7 @@ build_linux() {
     echo "=================================================="
 
     local LIBS_PREFIX="$COMPILATION_DIR/linux_x86_64"
-    export PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig"
+    local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig"
 
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
@@ -72,24 +72,12 @@ build_windows() {
     local WIN_SYSROOT="$WIN_SYSROOT_BASE"
     local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
-    export CROSS_PREFIX="x86_64-w64-mingw32-"
-    export PKG_CONFIG_PATH="$WIN_PKG_CONFIG_LIBDIR"
-    export PKG_CONFIG_LIBDIR="$WIN_PKG_CONFIG_LIBDIR"
+    local -x CROSS_PREFIX="x86_64-w64-mingw32-"
+    local -x PKG_CONFIG_PATH="$WIN_PKG_CONFIG_LIBDIR"
+    local -x PKG_CONFIG_LIBDIR="$WIN_PKG_CONFIG_LIBDIR"
     # export PKG_CONFIG_SYSROOT_DIR
 
-    local real_pkgconfig pkgconf_wrapper
-    real_pkgconfig=$(command -v pkg-config)
-    pkgconf_wrapper=/tmp/pkg-config-win-static.sh
-    cat > "$pkgconf_wrapper" <<EOF_INNER
-#!/usr/bin/env bash
-set -e
-out=\$(\"$real_pkgconfig\" "\$@" 2>/dev/null)
-status=\$?
-if [ "\$status" -ne 0 ]; then exit "\$status"; fi
-printf '%s\n' "\$out" | sed -E 's/(^|[[:space:]])-lgcc_s([^[:space:]]*)//g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^ //; s/ $//'
-EOF_INNER
-    chmod +x "$pkgconf_wrapper"
-    export PKG_CONFIG="$pkgconf_wrapper"
+    local -x PKG_CONFIG="/usr/local/bin/pkg-config-win-static.sh"
 
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
@@ -165,18 +153,18 @@ build_android() {
             ;;
     esac
 
-    export AR=$TOOLCHAIN/bin/llvm-ar
-    export CC=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang
-    export CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang++
-    export AS=$CC
-    export ASFLAGS="-c"
-    export LD=$CC
-    export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-    export STRIP=$TOOLCHAIN/bin/llvm-strip
+    local -x AR=$TOOLCHAIN/bin/llvm-ar
+    local -x CC=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang
+    local -x CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang++
+    local -x AS=$CC
+    local -x ASFLAGS="-c"
+    local -x LD=$CC
+    local -x RANLIB=$TOOLCHAIN/bin/llvm-ranlib
+    local -x STRIP=$TOOLCHAIN/bin/llvm-strip
 
     local PREFIX="$COMPILATION_DIR/android_$ABI"
-    export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
+    local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+    local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
