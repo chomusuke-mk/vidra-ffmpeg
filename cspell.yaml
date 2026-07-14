@@ -1,5 +1,11 @@
 version: "0.2"
-
 ignorePaths:
   - "**/*.sh"
-  - "Dockerfile"
+  - Dockerfile
+words:
+  - javiermk
+  - libva
+  - syms
+  - vidra
+  - vulkan
+  - windres

@@ -1,18 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-PATCHES_DIR="/docker-builder/patches"
-SRC_ROOT="/build-env/sources"
+PATCHES_DIR="$(realpath "$1")"
+SRC_ROOT="$(realpath "$2")"
 
 echo "================ Aplicando parches ==================="
+pushd "$SRC_ROOT"
 
-echo "Parcheando libva"
-(cd "$SRC_ROOT/libva" && patch -p4 < "$PATCHES_DIR/libva_meson.patch")
+echo "Parcheando mingw-toolchain"
+patch --forward --batch -p0 < "$PATCHES_DIR/mingw-toolchain.patch" || true
 
-echo "Parcheando Vulkan-Loader"
-(cd "$SRC_ROOT/vulkan-loader" && patch -p4 < "$PATCHES_DIR/vulkan_loader.patch")
+echo "Parcheando mingw-meson"
+patch --forward --batch -p0 < "$PATCHES_DIR/mingw-meson.patch" || true
 
-echo "Parcheando libxml2"
-(cd "$SRC_ROOT/libxml2" && patch -p1 < "$PATCHES_DIR/libxml2_android_socklen.patch" || true)
-
+popd
 echo "================ Parches aplicados ==================="

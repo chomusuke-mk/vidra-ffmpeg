@@ -1,14 +1,10 @@
 services:
   ffmpeg-builder:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        ANDROID_NDK_VERSION: r27d
+    build: .
     image: javiermk/vidra-ffmpeg:latest
+    container_name: vidra-ffmpeg-builder
     volumes:
       - ./dist:/dist
       - ./config.sh:/config.sh:ro
       - ./compile.sh:/compile.sh:ro
-      - ./docker-builder:/docker-builder:ro
-    entrypoint: ["/compile.sh"]
+    entrypoint: ["bash", "/compile.sh"]

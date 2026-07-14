@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-#SRC_ROOT="/build-env/sources"
-#DOWNLOADS_DIR="/downloads"
+DOWNLOADS_DIR="$(realpath "$1")"
+SRC_ROOT="$(realpath "$2")"
 
-SRC_ROOT="../temp/sources"
-DOWNLOADS_DIR="../temp/docker-build/downloads"
+rm -rf "$SRC_ROOT"
 mkdir -p "$SRC_ROOT"
 
 echo "================ Extrayendo dependencias ==================="
@@ -22,7 +21,7 @@ extract() {
 		output="$SRC_ROOT/$name"
 	fi
 	case "$tarball" in
-	*.tar.gz | *.tgz | *.tar.xz | *.txz | *.tar.bz2 | *.pkg.tar.zst)
+	*.tar.gz | *.tgz | *.tar.xz | *.txz | *.tar.bz2 | *.pkg.tar.zst | *.zip)
 		mkdir -p "$output"
 		if [[ "$tarball" == "mingw-w64-x86_64-"* ]]; then
 			tar -xf "$DOWNLOADS_DIR/$tarball" -C "$output" --strip-components=1

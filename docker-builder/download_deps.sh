@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-DOWNLOADS_DIR="temp/docker-build/downloads"
+DOWNLOADS_DIR="$(realpath "$1")"
 mkdir -p "$DOWNLOADS_DIR"
 
 echo "================ Descargando dependencias ==================="
@@ -34,7 +34,6 @@ download_if_missing() {
 		echo "$name ya descargado."
 	fi
 }
-
 # --- Common/Linux/Windows Libs ---
 download_if_missing "zlib" "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
 download_if_missing "libssh" "https://www.libssh.org/files/0.10/libssh-0.10.6.tar.xz"

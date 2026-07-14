@@ -1,8 +1,6 @@
 name: FFmpeg 8 Auto Release
 
 on:
-  schedule:
-    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       version:
