@@ -2,8 +2,6 @@
 FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG TARGET_OS=all
-ARG TARGET_ARCH=all
 
 # 1. Instalar dependencias
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,6 +42,8 @@ COPY docker-builder /docker-builder
 RUN chmod +x /docker-builder/*.sh
 
 # 3. MEGA-CAPA: Descargar, parchear, compilar y DESTRUIR rastros
+ARG TARGET_OS=all
+ARG TARGET_ARCH=all
 RUN --mount=type=cache,target=/downloads \
     mkdir -p /downloads /source /compiled && \
     /docker-builder/download_deps.sh /downloads && \

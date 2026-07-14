@@ -7,6 +7,8 @@ TARGET_ARCH=${2:-"all"}
 
 # shellcheck disable=SC1091
 source /config.sh
+API_LEVEL=24
+TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
 echo "=== Preparando el entorno ==="
 rm -rf /dist/*
@@ -34,14 +36,13 @@ build_linux() {
     echo " Compilando Linux (x86_64) - Estático"
     echo "=================================================="
 
-    local LIBS_PREFIX="/opt/ffmpeg-libs/linux"
+    local LIBS_PREFIX="$COMPILATION_DIR/linux_x86_64"
     export PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig"
-    export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
 
-    local feature_flags="--enable-libx264 --enable-libx265 --enable-brotli --enable-libvpl --enable-vaapi --enable-opencl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan"
+    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-vaapi --enable-opencl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan"
 
     ./configure \
         --prefix="$LIBS_PREFIX" \
@@ -66,15 +67,15 @@ build_windows() {
     echo " Compilando Windows (x86_64-mingw32) - Estático"
     echo "=================================================="
 
-    local LIBS_PREFIX="/opt/ffmpeg-libs/windows"
-    local WIN_SYSROOT_BASE="/usr/x86_64-w64-mingw32"
-    local WIN_SYSROOT="$WIN_SYSROOT_BASE/mingw64"
+    local LIBS_PREFIX="$COMPILATION_DIR/windows_x86_64"
+    local WIN_SYSROOT_BASE="$COMPILATION_DIR/windows_x86_64"
+    local WIN_SYSROOT="$WIN_SYSROOT_BASE"
     local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
     export CROSS_PREFIX="x86_64-w64-mingw32-"
     export PKG_CONFIG_PATH="$WIN_PKG_CONFIG_LIBDIR"
     export PKG_CONFIG_LIBDIR="$WIN_PKG_CONFIG_LIBDIR"
-    export PKG_CONFIG_SYSROOT_DIR="$WIN_SYSROOT_BASE"
+    # export PKG_CONFIG_SYSROOT_DIR
 
     local real_pkgconfig pkgconf_wrapper
     real_pkgconfig=$(command -v pkg-config)
@@ -93,7 +94,7 @@ EOF_INNER
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
 
-    local feature_flags="--enable-libx264 --enable-libx265 --enable-brotli --enable-libvpl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan --enable-ffnvcodec --enable-nvenc --enable-amf"
+    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan --enable-ffnvcodec --enable-nvenc --enable-amf"
 
     local optflags="-O1"
 
@@ -101,7 +102,7 @@ EOF_INNER
         --target-os=mingw32 \
         --arch=x86_64 \
         --cross-prefix=$CROSS_PREFIX \
-        --prefix=$LIBS_PREFIX \
+        --prefix="$LIBS_PREFIX" \
         --pkg-config=$PKG_CONFIG \
         --pkg-config-flags="--static" \
         --enable-gpl \
@@ -130,14 +131,9 @@ build_android() {
     echo " Compilando Android: $ABI"
     echo "=================================================="
 
-    local NDK_PATH="${NDK:-/opt/android-ndk}"
-    local API=24
-    local TOOLCHAIN="$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64"
-
     local arch_extra_flags=""
     local neon_flag=""
     local optflags="-O3"
-    local warn_suppress="-Wno-unused-function"
     local TARGET_HOST="" ARCH="" CPU=""
     
     case "$ABI" in
@@ -170,22 +166,22 @@ build_android() {
     esac
 
     export AR=$TOOLCHAIN/bin/llvm-ar
-    export CC=$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang
-    export CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API}-clang++
+    export CC=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang
+    export CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang++
     export AS=$CC
     export ASFLAGS="-c"
     export LD=$CC
     export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
     export STRIP=$TOOLCHAIN/bin/llvm-strip
 
-    local PREFIX="/opt/ffmpeg-libs/android/$ABI"
+    local PREFIX="$COMPILATION_DIR/android_$ABI"
     export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
     export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
     cd /app/ffmpeg
     make distclean >/dev/null 2>&1 || true
 
-    local feature_flags="--enable-libx264 --enable-libx265 --enable-zlib --enable-brotli --enable-openssl --enable-libxml2 --enable-libfreetype --enable-libfribidi --enable-fontconfig --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libvpx --enable-libwebp --enable-libopenjpeg --enable-libzimg --enable-libsoxr --enable-libmp3lame --enable-libopus --enable-libsvtav1 --enable-libvidstab --enable-libsrt --enable-amf --enable-ffnvcodec --enable-nvenc --enable-mediacodec --enable-jni"
+    local feature_flags="--enable-libx264 --enable-libx265 --enable-zlib  --enable-openssl --enable-libxml2 --enable-libfreetype --enable-libfribidi --enable-fontconfig --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libvpx --enable-libwebp --enable-libopenjpeg --enable-libzimg --enable-libsoxr --enable-libmp3lame --enable-libopus --enable-libsvtav1 --enable-libvidstab --enable-libsrt --enable-amf --enable-ffnvcodec --enable-nvenc --enable-mediacodec --enable-jni"
 
     ./configure \
         --prefix="$PREFIX" \
@@ -207,7 +203,7 @@ build_android() {
         --disable-debug \
         --disable-doc \
         --disable-ffplay \
-        --optflags="$optflags $warn_suppress" \
+        --optflags="$optflags" \
         ${neon_flag:+$neon_flag} \
         $arch_extra_flags \
         $feature_flags
@@ -215,7 +211,7 @@ build_android() {
     # Force static libc++ so ffmpeg does not depend on libc++_shared.so
     sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
 
-    make -j$(nproc)
+    make -j"$(nproc)"
 
     local OUT_DIR="/dist/android-$ABI"
     mkdir -p "$OUT_DIR"

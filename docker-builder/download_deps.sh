@@ -109,5 +109,6 @@ download_if_missing "mingw-w64-x86_64-svt-av1" "https://repo.msys2.org/mingw/x86
 download_if_missing "mingw-w64-x86_64-openssl" "https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-openssl-3.6.3-1-any.pkg.tar.zst"
 download_if_missing "mingw-w64-x86_64-libxml2" "https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-libxml2-2.15.3-1-any.pkg.tar.zst"
 download_if_missing "mingw-w64-x86_64-onevpl" "https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-onevpl-2023.4.0-1-any.pkg.tar.zst"
+download_if_missing "mingw-w64-x86_64-libx264" "https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-libx264-0.165.r3222.b35605a-2-any.pkg.tar.zst"
 
 echo "================ Dependencias descargadas ==================="
