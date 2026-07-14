@@ -4,17 +4,11 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        ANDROID_NDK_VERSION: r27b
+        ANDROID_NDK_VERSION: r27d
     image: javiermk/vidra-ffmpeg:latest
-    environment:
-      - ANDROID_NDK_HOME=/opt/android-ndk
-      - NDK=/opt/android-ndk
     volumes:
-      - ./output:/output
-      - ./sources:/build/sources
-      - ./config.sh:/build/config.sh:ro
-      - ./scripts:/build/scripts:ro
-    working_dir: /build
-    entrypoint: ["/build/scripts/main.sh"]
-    # Comando por defecto; puedes sobreescribir con docker compose run ffmpeg-builder <target>
-    command: ["linux"]
+      - ./dist:/dist
+      - ./config.sh:/config.sh:ro
+      - ./compile.sh:/compile.sh:ro
+      - ./docker-builder:/docker-builder:ro
+    entrypoint: ["/compile.sh"]
