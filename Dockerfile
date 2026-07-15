@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libsvtav1-dev libvpl-dev libvpx-dev libwebp-dev libx265-dev libxml2-dev libopus-dev \
   libvulkan-dev zlib1g-dev libzimg-dev libssl-dev ocl-icd-opencl-dev \
   libsvtav1enc-dev libsvtav1dec-dev libx264-dev libnuma-dev liblzma-dev \
+  libxcb1-dev libx11-dev libx11-xcb-dev libxext-dev libwayland-dev wayland-protocols libxrandr-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Instalar Android NDK

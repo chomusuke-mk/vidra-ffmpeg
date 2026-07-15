@@ -64,7 +64,7 @@ compile_linux() {
 
 	echo "--- Compilando lame (libmp3lame) ---"
 	pushd "$LINUX_ROOT/lame"
-	./configure --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-frontend
+	./configure --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-frontend --disable-decoder
 	make -j"$(nproc)"
 	make install
 	popd
@@ -99,6 +99,7 @@ compile_linux() {
 
 	echo "--- Compilando libass ---"
 	pushd "$LINUX_ROOT/libass"
+	autoreconf -fiv
 	./configure --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-test --disable-libunibreak
 	make -j"$(nproc)"
 	make install
@@ -214,12 +215,10 @@ compile_windows() {
 	make PREFIX="$PREFIX" install
 	popd
 
-	echo "--- Compilando amf ---"
+	echo "--- Copiando amf ---"
 	pushd "$WINDOWS_ROOT/amf"
-	mkdir -p build_windows && cd build_windows
-	cmake -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" -DCMAKE_INSTALL_PREFIX="$PREFIX" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF ..
-	make -j"$(nproc)"
-	make install
+	mkdir -p "$PREFIX/include"
+	cp -r AMF "$PREFIX/include/"
 	popd
 
 
@@ -227,7 +226,8 @@ compile_windows() {
 	cp "$WINDOWS_ROOT/windows-pkg-config.sh" "$PREFIX/"
 
 	echo "--- Copiando dependencias precompiladas de MSYS2 ---"
-	cp -rf "$WINDOWS_ROOT"/mingw/*/* "/mingw64/" 2 >/dev/null || true
+	mkdir -p /mingw64
+	cp -a "$WINDOWS_ROOT/mingw/mingw64/"* "/mingw64/" 2>/dev/null || true
 
 	echo "Archivos de dependencias precompiladas copiados a /mingw64/"
 	echo "============ Compilación completada - Windows ====================="
@@ -319,7 +319,7 @@ compile_android() {
 
 	echo "--- Compilando lame (libmp3lame) ---"
 	pushd "$ANDROID_ROOT/lame"
-	./configure --host="${TARGET_HOST}" --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-frontend
+	./configure --host="${TARGET_HOST}" --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-frontend --disable-decoder
 	make -j"$(nproc)"
 	make install
 	popd
@@ -365,6 +365,7 @@ compile_android() {
 
 	echo "--- Compilando libass ---"
 	pushd "$ANDROID_ROOT/libass"
+	autoreconf -fiv
 	./configure --host="${TARGET_HOST}" --prefix="$PREFIX" --enable-static --disable-shared --with-pic --disable-test --disable-libunibreak --disable-fontconfig --disable-require-system-font-provider
 	make -j"$(nproc)"
 	make install

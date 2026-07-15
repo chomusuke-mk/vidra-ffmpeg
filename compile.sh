@@ -70,14 +70,15 @@ build_windows() {
 		local -x WINDOWS_FFMPEG="/tmp/app/windows/ffmpeg"
 		rm -rf "$WINDOWS_FFMPEG" && mkdir -p "$WINDOWS_FFMPEG" && cp -r /app/ffmpeg/* "$WINDOWS_FFMPEG"
 
-    local LIBS_PREFIX="/mingw64"
+    local LIBS_PREFIX="$COMPILATION_DIR/windows_x86_64"
+    local WIN_SYSROOT="/mingw64"
     local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
     local -x CROSS_PREFIX="x86_64-w64-mingw32-"
     local -x PKG_CONFIG_PATH="$WIN_PKG_CONFIG_LIBDIR"
     local -x PKG_CONFIG_LIBDIR="$WIN_PKG_CONFIG_LIBDIR"
 
-    local -x PKG_CONFIG="/usr/local/bin/pkg-config-win-static.sh"
+    local -x PKG_CONFIG="$LIBS_PREFIX/windows-pkg-config.sh"
 
     cd $WINDOWS_FFMPEG
 

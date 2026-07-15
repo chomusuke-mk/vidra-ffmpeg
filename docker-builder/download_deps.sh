@@ -36,7 +36,7 @@ download_if_missing() {
 }
 # --- Common/Linux/Windows Libs ---
 download_if_missing "zlib" "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
-download_if_missing "libssh" "https://www.libssh.org/files/0.12/libssh-0.12.0.tar.xz"
+download_if_missing "libssh" "https://gitlab.com/libssh/libssh-mirror/-/archive/libssh-0.12.0/libssh-mirror-libssh-0.12.0.tar.gz"
 download_if_missing "brotli" "https://github.com/google/brotli/archive/v1.2.0.tar.gz"
 download_if_missing "openssl" "https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz"
 download_if_missing "expat" "https://github.com/libexpat/libexpat/releases/download/R_2_8_2/expat-2.8.2.tar.gz"
@@ -67,7 +67,7 @@ download_if_missing "opencl-icd-loader" "https://github.com/KhronosGroup/OpenCL-
 
 # --- Android specific libs ---
 download_if_missing "libogg" "https://downloads.xiph.org/releases/ogg/libogg-1.3.6.tar.gz"
-download_if_missing "libvorbis" "https://ftp.osuosl.org/pub/xiph/releases/vorbis/vorbis-tools-1.4.3.tar.gz"
+download_if_missing "libvorbis" "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz"
 download_if_missing "twolame" "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"
 download_if_missing "libpng" "https://download.sourceforge.net/libpng/libpng-1.6.58.tar.gz"
 download_if_missing "vid.stab" "https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz"

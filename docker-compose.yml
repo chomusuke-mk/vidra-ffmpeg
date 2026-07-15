@@ -2,7 +2,9 @@ services:
   ffmpeg-builder:
     build:
       context: .
-
+      args:
+        - TARGET_OS=windows
+        - TARGET_ARCH=x86_64
     image: javiermk/vidra-ffmpeg:latest
     container_name: vidra-ffmpeg-builder
     volumes:
@@ -10,4 +12,4 @@ services:
       - ./temp/sources:/source
       - ./config.sh:/config.sh:ro
       - ./compile.sh:/compile.sh:ro
-    entrypoint: ["bash", "/compile.sh"]
+    entrypoint: ["bash", "/compile.sh", "windows", "x86_64"]
