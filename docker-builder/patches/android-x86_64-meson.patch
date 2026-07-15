@@ -1,0 +1,15 @@
+--- /dev/null
++++ android-x86_64-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android24-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android24-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'x86'
++cpu = 'i686'
++endian = 'little'

@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libdav1d-dev libmp3lame-dev libopenjp2-7-dev libsnappy-dev libsoxr-dev libssh-dev \
   libsvtav1-dev libvpl-dev libvpx-dev libwebp-dev libx265-dev libxml2-dev libopus-dev \
   libvulkan-dev zlib1g-dev libzimg-dev libssl-dev ocl-icd-opencl-dev \
+  libsvtav1enc-dev libsvtav1dec-dev libx264-dev libnuma-dev liblzma-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Instalar Android NDK
@@ -24,7 +25,6 @@ RUN wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-
     && mv android-ndk-${NDK_VERSION} android-ndk-linux \
     && rm android-ndk-${NDK_VERSION}-linux.zip
 ENV ANDROID_NDK_HOME=/opt/android-ndk-linux
-ENV NDK_HOME=/opt/android-ndk-linux
 
 # Instalar CUDA Toolkit
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb \
@@ -35,7 +35,7 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86
   && rm -rf /var/lib/apt/lists/*
 ENV CUDA_HOME=/usr/local/cuda
 ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
-ENV PATH=${CUDA_HOME}/bin:${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+ENV PATH=${CUDA_HOME}/bin:$PATH
 
 # copiar herramientas de construcción de la imagen
 COPY docker-builder /docker-builder
@@ -49,7 +49,7 @@ RUN --mount=type=cache,target=/downloads \
     /docker-builder/download_deps.sh /downloads && \
     /docker-builder/extract_deps.sh /downloads /source && \
     /docker-builder/patch_deps.sh /docker-builder/patches /source && \
-    /docker-builder/build_libs.sh /source /compiled ${TARGET_OS} ${TARGET_ARCH} && \
-    rm -rf /source /docker-builder /var/lib/apt/lists/*
+    /docker-builder/build_libs.sh /source /compiled /tmp ${TARGET_OS} ${TARGET_ARCH} && \
+    rm -rf /source /docker-builder /tmp
 
 ENV COMPILATION_DIR=/compiled

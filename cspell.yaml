@@ -3,7 +3,11 @@ ignorePaths:
   - "**/*.sh"
   - Dockerfile
 words:
+  - androideabi
+  - armeabi
+  - armv
   - javiermk
+  - lgcc
   - libva
   - syms
   - vidra

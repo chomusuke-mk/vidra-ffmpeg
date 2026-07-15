@@ -1,0 +1,15 @@
+--- /dev/null
++++ android-armeabi-v7a-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi24-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'arm'
++cpu = 'armv7'
++endian = 'little'

@@ -35,14 +35,15 @@ build_linux() {
     echo "=================================================="
     echo " Compilando Linux (x86_64) - Estático"
     echo "=================================================="
+		local -x LINUX_FFMPEG="/tmp/app/linux/ffmpeg"
+		rm -rf "$LINUX_FFMPEG" && mkdir -p "$LINUX_FFMPEG" && cp -r /app/ffmpeg/* "$LINUX_FFMPEG"
 
     local LIBS_PREFIX="$COMPILATION_DIR/linux_x86_64"
-    local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig"
+    local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
-    cd /app/ffmpeg
-    make distclean >/dev/null 2>&1 || true
+    cd $LINUX_FFMPEG
 
-    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-vaapi --enable-opencl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan"
+    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-vaapi --enable-opencl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1"
 
     ./configure \
         --prefix="$LIBS_PREFIX" \
@@ -66,23 +67,21 @@ build_windows() {
     echo "=================================================="
     echo " Compilando Windows (x86_64-mingw32) - Estático"
     echo "=================================================="
+		local -x WINDOWS_FFMPEG="/tmp/app/windows/ffmpeg"
+		rm -rf "$WINDOWS_FFMPEG" && mkdir -p "$WINDOWS_FFMPEG" && cp -r /app/ffmpeg/* "$WINDOWS_FFMPEG"
 
-    local LIBS_PREFIX="$COMPILATION_DIR/windows_x86_64"
-    local WIN_SYSROOT_BASE="$COMPILATION_DIR/windows_x86_64"
-    local WIN_SYSROOT="$WIN_SYSROOT_BASE"
+    local LIBS_PREFIX="/mingw64"
     local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
     local -x CROSS_PREFIX="x86_64-w64-mingw32-"
     local -x PKG_CONFIG_PATH="$WIN_PKG_CONFIG_LIBDIR"
     local -x PKG_CONFIG_LIBDIR="$WIN_PKG_CONFIG_LIBDIR"
-    # export PKG_CONFIG_SYSROOT_DIR
 
     local -x PKG_CONFIG="/usr/local/bin/pkg-config-win-static.sh"
 
-    cd /app/ffmpeg
-    make distclean >/dev/null 2>&1 || true
+    cd $WINDOWS_FFMPEG
 
-    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libxml2 --enable-libssh --enable-libsvtav1 --enable-vulkan --enable-ffnvcodec --enable-nvenc --enable-amf"
+    local feature_flags="--enable-libx264 --enable-libx265  --enable-libvpl --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libsoxr --enable-libsvtav1 --enable-ffnvcodec --enable-nvenc --enable-amf"
 
     local optflags="-O1"
 
@@ -103,7 +102,7 @@ build_windows() {
         --optflags="$optflags" \
         --extra-cflags="-static -std=gnu11 -I$LIBS_PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC" \
         --extra-ldflags="-static -static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
-        --extra-libs="-static-libgcc -static-libstdc++ -lcompatstat64 -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lucrtbase -lstdc++ -lwinpthread" \
+        --extra-libs="-static-libgcc -static-libstdc++ -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lstdc++ -lwinpthread -lharfbuzz -lfreetype -lgraphite2 -lrpcrt4 -lusp10 -lole32" \
         $feature_flags
 
     make -j"$(nproc)"
@@ -118,7 +117,8 @@ build_android() {
     echo "=================================================="
     echo " Compilando Android: $ABI"
     echo "=================================================="
-
+		local -x ANDROID_FFMPEG="/tmp/app/android/$ABI/ffmpeg"
+		rm -rf "$ANDROID_FFMPEG" && mkdir -p "$ANDROID_FFMPEG" && cp -r /app/ffmpeg/* "$ANDROID_FFMPEG"
     local arch_extra_flags=""
     local neon_flag=""
     local optflags="-O3"
@@ -153,20 +153,20 @@ build_android() {
             ;;
     esac
 
-    local -x AR=$TOOLCHAIN/bin/llvm-ar
-    local -x CC=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang
-    local -x CXX=$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang++
-    local -x AS=$CC
+    local -x AR="${TOOLCHAIN}/bin/llvm-ar"
+    local -x CC="${TOOLCHAIN}/bin/${TARGET_HOST}${API_LEVEL}-clang"
+    local -x CXX="${TOOLCHAIN}/bin/${TARGET_HOST}${API_LEVEL}-clang++"
+    local -x AS="${CC}"
     local -x ASFLAGS="-c"
-    local -x LD=$CC
-    local -x RANLIB=$TOOLCHAIN/bin/llvm-ranlib
-    local -x STRIP=$TOOLCHAIN/bin/llvm-strip
+    local -x LD="${CC}"
+    local -x RANLIB="${TOOLCHAIN}/bin/llvm-ranlib"
+    local -x STRIP="${TOOLCHAIN}/bin/llvm-strip"
 
     local PREFIX="$COMPILATION_DIR/android_$ABI"
     local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
     local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
-    cd /app/ffmpeg
+    cd "$ANDROID_FFMPEG"
     make distclean >/dev/null 2>&1 || true
 
     local feature_flags="--enable-libx264 --enable-libx265 --enable-zlib  --enable-openssl --enable-libxml2 --enable-libfreetype --enable-libfribidi --enable-fontconfig --enable-libharfbuzz --enable-libass --enable-libdav1d --enable-libvpx --enable-libwebp --enable-libopenjpeg --enable-libzimg --enable-libsoxr --enable-libmp3lame --enable-libopus --enable-libsvtav1 --enable-libvidstab --enable-libsrt --enable-amf --enable-ffnvcodec --enable-nvenc --enable-mediacodec --enable-jni"

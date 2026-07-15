@@ -1,5 +1,5 @@
 --- /dev/null
-+++ mingw/mingw-toolchain.cmake
++++ windows-toolchain.cmake
 @@ -0,0 +1,9 @@
 +set(CMAKE_SYSTEM_NAME Windows)
 +set(CMAKE_SYSTEM_PROCESSOR x86_64)

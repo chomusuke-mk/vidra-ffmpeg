@@ -1,5 +1,5 @@
 --- /dev/null
-+++ mingw/meson-cross.txt
++++ windows-meson-cross.txt
 @@ -0,0 +1,13 @@
 +[binaries]
 +c = 'x86_64-w64-mingw32-gcc'

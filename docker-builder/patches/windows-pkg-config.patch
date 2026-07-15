@@ -1,0 +1,11 @@
+new file mode 100755
+--- /dev/null
++++ windows-pkg-config.sh
+@@ -0,0 +1,7 @@
++#!/usr/bin/env bash
++out=$(/usr/bin/pkg-config "$@")
++status=$?
++if [ "$status" -ne 0 ]; then
++    exit "$status"
++fi
++printf '%s\n' "$out" | sed -E 's/(^|[[:space:]])-lgcc_s([^[:space:]]*)//g; s/[[:space:]]+/ /g; s/^ //; s/ $//'
