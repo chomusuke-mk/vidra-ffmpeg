@@ -10,6 +10,140 @@ TARGET_ARCH=${5:-"all"}
 API_LEVEL=24
 TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
+build_cmake() {
+	local dir="$1"
+	local prefix="$2"
+	shift 2
+	echo "   -> Building with CMake"
+	mkdir -p "$dir/build"
+	pushd "$dir/build" > /dev/null
+	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "$@"
+	make -j"$(nproc)"
+	make install
+	popd > /dev/null
+}
+
+build_meson() {
+	local dir="$1"
+	local prefix="$2"
+	shift 2
+	echo "   -> Building with Meson"
+	pushd "$dir" > /dev/null
+	meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static "$@"
+	ninja -C build
+	ninja -C build install
+	popd > /dev/null
+}
+
+build_autotools() {
+	local dir="$1"
+	local prefix="$2"
+	shift 2
+	echo "   -> Building with Autotools/Configure"
+	pushd "$dir" > /dev/null
+	if [ ! -f configure ] && [ -f configure.ac ]; then
+		autoreconf -fiv
+	fi
+	if [ -f autogen.sh ]; then ./autogen.sh; fi
+	if [ -f bootstrap ]; then ./bootstrap; fi
+	if [ -f autogen.sh ]; then ./autogen.sh; fi
+	./configure --prefix="$prefix" --enable-static --disable-shared --with-pic "$@"
+	make -j"$(nproc)"
+	make install
+	popd > /dev/null
+}
+
+build_make() {
+	local dir="$1"
+	local prefix="$2"
+	shift 2
+	echo "   -> Building with Make"
+	pushd "$dir" > /dev/null
+	make -j"$(nproc)" PREFIX="$prefix" "$@"
+	make install PREFIX="$prefix" "$@"
+	popd > /dev/null
+}
+
+build_library() {
+	local dir="$1"
+	local prefix="$2"
+	local name=$(basename "$dir")
+	echo "--- Compilando $name ---"
+	
+	# Exceptions for specific libraries
+	if [ "$name" == "frei0r" ]; then
+		build_cmake "$dir" "$prefix" -DWITHOUT_OPENCV=ON -DWITHOUT_CAIRO=ON -DWITHOUT_GAVL=ON -DWITHOUT_FACERECOGNITION=ON
+		return
+	fi
+	if [ "$name" == "amf" ]; then
+		mkdir -p "$prefix/include/AMF"
+		cp -r "$dir/AMF/"* "$prefix/include/AMF/" 2>/dev/null || cp -r "$dir/"* "$prefix/include/AMF/"
+		return
+	fi
+	if [ "$name" == "iconv" ]; then
+		pushd "$dir" > /dev/null
+		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic
+		make -j"$(nproc)"
+		make install
+		popd > /dev/null
+		return
+	fi
+	if [ "$name" == "openssl" ]; then
+		pushd "$dir" > /dev/null
+		./config --prefix="$prefix" no-shared -fPIC
+		make -j"$(nproc)"
+		make install_sw
+		popd > /dev/null
+		return
+	fi
+	if [ "$name" == "davs2" ] || [ "$name" == "xavs2" ]; then
+		pushd "$dir/build/linux" > /dev/null
+		./configure --prefix="$prefix" --enable-pic --disable-shared --disable-asm
+		make -j"$(nproc)"
+		make install
+		popd > /dev/null
+		return
+	fi
+	if [ "$name" == "zlib" ] || [ "$name" == "libpng" ]; then
+		pushd "$dir" > /dev/null
+		./configure --prefix="$prefix" --static
+		make -j"$(nproc)"
+		make install
+		popd > /dev/null
+		return
+	fi
+	if [ "$name" == "x264" ] || [ "$name" == "x265" ]; then
+		# x264 uses configure, x265 uses cmake in source/
+		if [ "$name" == "x264" ]; then
+			pushd "$dir" > /dev/null
+			./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli
+			make -j"$(nproc)"
+			make install
+			popd > /dev/null
+		else
+			pushd "$dir/source" > /dev/null
+			cmake . -DCMAKE_INSTALL_PREFIX="$prefix" -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+			make -j"$(nproc)"
+			make install
+			popd > /dev/null
+		fi
+		return
+	fi
+
+	# Generic Detection
+	if [ -f "$dir/CMakeLists.txt" ]; then
+		build_cmake "$dir" "$prefix"
+	elif [ -f "$dir/meson.build" ]; then
+		build_meson "$dir" "$prefix"
+	elif [ -f "$dir/configure" ] || [ -f "$dir/autogen.sh" ]; then
+		build_autotools "$dir" "$prefix"
+	elif [ -f "$dir/Makefile" ]; then
+		build_make "$dir" "$prefix"
+	else
+		echo "Warning: No known build system found for $name"
+	fi
+}
+
 compile_linux() {
 	echo "==================== Compilando librerías - Linux ====================="
 	local -x PREFIX="$COMPILATION_DIR/linux_x86_64"
@@ -20,13 +154,22 @@ compile_linux() {
 	local -x CFLAGS="-fPIC -O3"
 	local -x CXXFLAGS="-fPIC -O3"
 
-	echo "--- Compilando iconv ---"
-	pushd "$LINUX_ROOT/iconv"
-	./configure --prefix="$PREFIX" --enable-static --disable-shared --with-pic
-	make -j"$(nproc)"
-	make install
-	popd
+	# Dependencies that must be built first
+	local PRIORITY_LIBS="dvdread"
+	for lib in $PRIORITY_LIBS; do
+		if [ -d "$LINUX_ROOT/$lib" ]; then
+			build_library "$LINUX_ROOT/$lib" "$PREFIX"
+		fi
+	done
 
+	for lib_dir in "$LINUX_ROOT"/*; do
+		if [ -d "$lib_dir" ]; then
+			local name=$(basename "$lib_dir")
+			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]]; then
+				build_library "$lib_dir" "$PREFIX"
+			fi
+		fi
+	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
 	echo "==================== Compilación completada - Linux ====================="

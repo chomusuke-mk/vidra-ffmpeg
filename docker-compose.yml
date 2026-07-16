@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        - TARGET_OS=all
+        - TARGET_OS=linux
         - TARGET_ARCH=all
     image: javiermk/vidra-ffmpeg:latest
     container_name: vidra-ffmpeg-builder

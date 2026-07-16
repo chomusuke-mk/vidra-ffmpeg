@@ -6,9 +6,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 # 1. Instalar dependencias
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
-  autoconf automake libtool libtool-bin cmake ninja-build meson \
+  autoconf automake libtool libtool-bin cmake ninja-build \
   python3 python3-pip zstd gperf \
-  libva-dev libdrm-dev libkrb5-dev gnupg clang llvm \
+  libva-dev libdrm-dev libkrb5-dev gnupg clang llvm texinfo gettext \
   mingw-w64 g++-mingw-w64 gcc-mingw-w64 \
   libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev libass-dev \
   libdav1d-dev libmp3lame-dev libopenjp2-7-dev libsnappy-dev libsoxr-dev libssh-dev \
@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libsvtav1enc-dev libsvtav1dec-dev libx264-dev libnuma-dev liblzma-dev \
   libxcb1-dev libx11-dev libx11-xcb-dev libxext-dev libwayland-dev wayland-protocols libxrandr-dev \
   && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --break-system-packages meson
 
 # Instalar Android NDK
 ARG NDK_VERSION=r27d

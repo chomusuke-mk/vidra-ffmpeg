@@ -48,7 +48,7 @@ download_if_missing "vulkan-headers" "https://github.com/KhronosGroup/Vulkan-Hea
 download_if_missing "vulkan-loader" "https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz"
 download_if_missing "shaderc" "https://github.com/google/shaderc/archive/refs/tags/v2026.2.tar.gz"
 download_if_missing "libvorbis" "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz"
-download_if_missing "gmp" "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz"
+download_if_missing "gmp" "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
 download_if_missing "lzma" "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.gz"
 download_if_missing "liblcevc" "https://github.com/v-novaltd/LCEVCdec/archive/refs/tags/4.2.0.tar.gz"
 download_if_missing "opencl-headers" "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v2026.05.29.tar.gz"
