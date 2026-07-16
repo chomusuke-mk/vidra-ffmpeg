@@ -1,15 +1,45 @@
 version: "0.2"
 ignorePaths:
   - "**/*.sh"
+  - "**/*.patch"
   - Dockerfile
 words:
   - androideabi
   - armeabi
   - armv
+  - colorspace
+  - dxva
+  - fontconfig
+  - freetype
+  - fribidi
+  - harfbuzz
   - javiermk
   - lgcc
+  - libass
+  - libdav
+  - libmp
+  - libopenjpeg
+  - libsnappy
+  - libsoxr
+  - libssh
+  - libsvtav
   - libva
+  - libvpl
+  - libvpx
+  - libwebp
+  - libx
+  - mediacodec
+  - msvcrt
+  - nvcodec
+  - NVDEC
+  - NVENC
+  - opencl
+  - openssl
+  - resampler
+  - schannel
   - syms
+  - vaapi
   - vidra
   - vulkan
   - windres
+  - zimg

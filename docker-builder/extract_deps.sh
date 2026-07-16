@@ -14,20 +14,13 @@ extract() {
 	echo "Extrayendo $tarball"
 	shopt -s extglob
 	name="${tarball#mingw-w64-x86_64-}"
-	name="${name%.@(tar.gz|tgz|tar.xz|txz|tar.bz2|pkg.tar.zst)}"
-	if [[ "$tarball" == "mingw-w64-x86_64-"* ]]; then
-		output="$SRC_ROOT/mingw/$name"
-	else
-		output="$SRC_ROOT/$name"
-	fi
+	name="${name%.@(tar.gz|tgz|tar.xz|txz|tar.bz2)}"
+	output="$SRC_ROOT/$name"
+
 	case "$tarball" in
-	*.tar.gz | *.tgz | *.tar.xz | *.txz | *.tar.bz2 | *.pkg.tar.zst | *.zip)
+	*.tar.gz | *.tgz | *.tar.xz | *.txz | *.tar.bz2)
 		mkdir -p "$output"
-		if [[ "$tarball" == "mingw-w64-x86_64-"* ]]; then
-			tar -xf "$DOWNLOADS_DIR/$tarball" -C "$output" --strip-components=1
-		else
-			tar -xf "$DOWNLOADS_DIR/$tarball" -C "$output" --strip-components=1
-		fi
+		tar -xf "$DOWNLOADS_DIR/$tarball" -C "$output" --strip-components=1
 		;;
 	*)
 		echo "Formato de archivo desconocido: $tarball" >&2

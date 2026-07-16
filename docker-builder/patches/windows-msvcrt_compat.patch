@@ -1,0 +1,35 @@
+--- /dev/null
++++ windows-msvcrt_compat.c
+@@ -0,0 +1,32 @@
++extern int fseeko64();
++extern long long ftello64();
++void *__imp_fseeko64 = fseeko64;
++void *__imp_ftello64 = ftello64;
++
++int _stat64i32(const char* a, void* b);
++int stat64i32(const char* a, void* b) {
++    return _stat64i32(a, b);
++}
++
++int _ftime64(void* a);
++int ftime64(void* a) {
++    return _ftime64(a);
++}
++
++int _stat64(const char* a, void* b);
++int stat64(const char* a, void* b) {
++    return _stat64(a, b);
++}
++
++#include <stdlib.h>
++#include <string.h>
++char *strndup(const char *s, size_t n) {
++    size_t len = 0;
++    while (len < n && s[len]) len++;
++    char *p = malloc(len + 1);
++    if (p) {
++        memcpy(p, s, len);
++        p[len] = '\0';
++    }
++    return p;
++}
