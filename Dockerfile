@@ -6,19 +6,21 @@ ARG DEBIAN_FRONTEND=noninteractive
 # 1. Instalar dependencias
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
-  autoconf automake libtool libtool-bin cmake ninja-build \
-  python3 python3-pip zstd gperf \
+  autoconf automake libtool libtool-bin libltdl-dev cmake ninja-build \
+  python3 python3-pip zstd gperf autopoint \
   libva-dev libdrm-dev libkrb5-dev gnupg clang llvm texinfo gettext \
   mingw-w64 g++-mingw-w64 gcc-mingw-w64 \
   libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev libass-dev \
   libdav1d-dev libmp3lame-dev libopenjp2-7-dev libsnappy-dev libsoxr-dev libssh-dev \
   libsvtav1-dev libvpl-dev libvpx-dev libwebp-dev libx265-dev libxml2-dev libopus-dev \
-  libvulkan-dev zlib1g-dev libzimg-dev libssl-dev ocl-icd-opencl-dev \
+  libvulkan-dev zlib1g-dev libzimg-dev libssl-dev \
   libsvtav1enc-dev libsvtav1dec-dev libx264-dev libnuma-dev liblzma-dev \
   libxcb1-dev libx11-dev libx11-xcb-dev libxext-dev libwayland-dev wayland-protocols libxrandr-dev \
+  xutils-dev x11proto-dev xcb-proto python3-xcbgen \
+  libxcursor-dev libxinerama-dev libxi-dev libxss-dev libxfixes-dev libxrender-dev libxkbcommon-dev libxtst-dev \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --break-system-packages meson
+RUN pip3 install --break-system-packages meson glad2
 
 # Instalar Android NDK
 ARG NDK_VERSION=r27d

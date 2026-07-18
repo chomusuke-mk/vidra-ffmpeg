@@ -22,5 +22,40 @@ patch --forward --batch -p0 < "$PATCHES_DIR/windows-msvcrt_compat.patch" || true
 
 echo "Agregando pkg-config"
 patch --forward --batch -p0 < "$PATCHES_DIR/windows-pkg-config.patch" || true
-popd
-echo "================ Parches aplicados ==================="
+	popd
+	
+	echo "Descargando dependencias de libjxl"
+	if [ -d "$SRC_ROOT/libjxl" ]; then
+		pushd "$SRC_ROOT/libjxl"
+		./deps.sh
+		popd
+	fi
+	
+	echo "Descargando dependencias de shaderc"
+	if [ -d "$SRC_ROOT/shaderc" ]; then
+		pushd "$SRC_ROOT/shaderc"
+		./utils/git-sync-deps
+		popd
+	fi
+	
+	if [ -d "$SRC_ROOT/uavs3d" ]; then
+		echo "Generando version.h para uavs3d"
+		cat <<EOF > "$SRC_ROOT/uavs3d/version.h"
+#ifndef __VERSION_H__
+#define __VERSION_H__
+#define VER_MAJOR  1
+#define VER_MINOR  0
+#define VER_BUILD  0
+#define VERSION_TYPE "release"
+#define VERSION_STR  "1.0.0"
+#define VERSION_SHA1 "unknown"
+#endif // __VERSION_H__
+EOF
+	fi
+
+	if [ -d "$SRC_ROOT/libpulse" ]; then
+		echo "Generando .tarball-version para libpulse"
+		echo "17.0" > "$SRC_ROOT/libpulse/.tarball-version"
+	fi
+	
+	echo "================ Parches aplicados ==================="

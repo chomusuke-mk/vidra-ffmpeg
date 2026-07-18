@@ -68,6 +68,7 @@ download_if_missing "gme" "https://github.com/libgme/game-music-emu/releases/dow
 download_if_missing "kvazaar" "https://github.com/ultravideo/kvazaar/releases/download/v2.3.2/kvazaar-2.3.2.tar.gz"
 download_if_missing "libaribbcaption" "https://github.com/xqq/libaribcaption/archive/refs/tags/v1.1.1.tar.gz"
 download_if_missing "libass" "https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.gz"
+download_if_missing "libudfread" "https://code.videolan.org/videolan/libudfread/-/archive/1.1.2/libudfread-1.1.2.tar.gz"
 download_if_missing "libbluray" "https://code.videolan.org/videolan/libbluray/-/archive/1.4.1/libbluray-1.4.1.tar.gz"
 download_if_missing "libjxl" "https://github.com/libjxl/libjxl/archive/refs/tags/v0.12.0.tar.gz"
 download_if_missing "libmp3lame" "https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz"

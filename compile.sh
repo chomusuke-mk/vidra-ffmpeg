@@ -54,6 +54,8 @@ build_linux() {
         --disable-debug \
         --disable-ffplay \
         --disable-doc \
+        --extra-cflags="-I$LIBS_PREFIX/include" \
+        --extra-ldflags="-L$LIBS_PREFIX/lib" \
         $feature_flags
 
     make -j"$(nproc)"

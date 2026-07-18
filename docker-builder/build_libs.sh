@@ -8,7 +8,7 @@ TARGET_OS=${4:-"all"}
 TARGET_ARCH=${5:-"all"}
 
 API_LEVEL=24
-TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+TOOLCHAIN="${ANDROID_NDK_HOME:-}/toolchains/llvm/prebuilt/linux-x86_64"
 
 build_cmake() {
 	local dir="$1"
@@ -17,7 +17,7 @@ build_cmake() {
 	echo "   -> Building with CMake"
 	mkdir -p "$dir/build"
 	pushd "$dir/build" > /dev/null
-	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "$@"
+	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
 	make -j"$(nproc)"
 	make install
 	popd > /dev/null
@@ -80,6 +80,23 @@ build_library() {
 		cp -r "$dir/AMF/"* "$prefix/include/AMF/" 2>/dev/null || cp -r "$dir/"* "$prefix/include/AMF/"
 		return
 	fi
+	if [ "$name" == "openmpt" ]; then
+		pushd "$dir" > /dev/null
+		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --without-mpg123 --disable-openmpt123 --disable-examples --disable-tests
+		make -j"$(nproc)"
+		make install
+		popd > /dev/null
+		return
+	fi
+	if [ "$name" == "chromaprint" ]; then
+		build_cmake "$dir" "$prefix" -DBUILD_TOOLS=OFF -DBUILD_TESTS=OFF
+		echo "Libs.private: -lstdc++ -lm" >> "$prefix/lib/pkgconfig/libchromaprint.pc"
+		return
+	fi
+	if [ "$name" == "sdl2" ]; then
+		build_cmake "$dir" "$prefix" -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+		return
+	fi
 	if [ "$name" == "iconv" ]; then
 		pushd "$dir" > /dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic
@@ -103,6 +120,9 @@ build_library() {
 		make install
 		popd > /dev/null
 		return
+	fi
+	if [ "$name" == "libbluray" ]; then
+		rm -rf "$dir/subprojects/libudfread"
 	fi
 	if [ "$name" == "zlib" ] || [ "$name" == "libpng" ]; then
 		pushd "$dir" > /dev/null
@@ -130,6 +150,50 @@ build_library() {
 		return
 	fi
 
+	if [ "$name" == "lame" ] || [ "$name" == "libmp3lame" ]; then
+		pushd "$dir" > /dev/null
+		if [ ! -f configure ] && [ -f configure.ac ]; then
+			autoreconf -fiv
+		fi
+		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --disable-decoder
+		make -j"$(nproc)"
+		make install
+		popd > /dev/null
+		return
+	fi
+
+	if [ "$name" == "libpulse" ]; then
+		pushd "$dir" > /dev/null
+		meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false -Dc_link_args="-L$prefix/lib -liconv"
+		ninja -C build
+		ninja -C build install
+		popd > /dev/null
+		return
+	fi
+
+	if [ "$name" == "libvmaf" ]; then
+		pushd "$dir/libvmaf" > /dev/null
+		meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static
+		ninja -C build
+		ninja -C build install
+		popd > /dev/null
+		return
+	fi
+
+	if [ "$name" == "libvpx" ]; then
+		pushd "$dir" > /dev/null
+		./configure --prefix="$prefix" --disable-shared --enable-static --enable-pic --disable-examples --disable-unit-tests --disable-docs
+		make -j$(nproc)
+		make install
+		popd > /dev/null
+		return
+	fi
+
+	if [ "$name" == "openal" ]; then
+		build_cmake "$dir" "$prefix" -DALSOFT_EXAMPLES=OFF -DALSOFT_UTILS=OFF -DCMAKE_EXE_LINKER_FLAGS="-lm"
+		return
+	fi
+
 	# Generic Detection
 	if [ -f "$dir/CMakeLists.txt" ]; then
 		build_cmake "$dir" "$prefix"
@@ -141,6 +205,7 @@ build_library() {
 		build_make "$dir" "$prefix"
 	else
 		echo "Warning: No known build system found for $name"
+		exit 1
 	fi
 }
 
@@ -155,7 +220,7 @@ compile_linux() {
 	local -x CXXFLAGS="-fPIC -O3"
 
 	# Dependencies that must be built first
-	local PRIORITY_LIBS="dvdread"
+	local PRIORITY_LIBS="libsndfile libudfread dvdread"
 	for lib in $PRIORITY_LIBS; do
 		if [ -d "$LINUX_ROOT/$lib" ]; then
 			build_library "$LINUX_ROOT/$lib" "$PREFIX"
