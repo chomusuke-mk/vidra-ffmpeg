@@ -16,11 +16,11 @@ build_cmake() {
 	shift 2
 	echo "   -> Building with CMake"
 	mkdir -p "$dir/build"
-	pushd "$dir/build" > /dev/null
+	pushd "$dir/build" >/dev/null
 	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
 	make -j"$(nproc)"
 	make install
-	popd > /dev/null
+	popd >/dev/null
 }
 
 build_meson() {
@@ -28,11 +28,11 @@ build_meson() {
 	local prefix="$2"
 	shift 2
 	echo "   -> Building with Meson"
-	pushd "$dir" > /dev/null
+	pushd "$dir" >/dev/null
 	meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static "$@"
 	ninja -C build
 	ninja -C build install
-	popd > /dev/null
+	popd >/dev/null
 }
 
 build_autotools() {
@@ -40,7 +40,7 @@ build_autotools() {
 	local prefix="$2"
 	shift 2
 	echo "   -> Building with Autotools/Configure"
-	pushd "$dir" > /dev/null
+	pushd "$dir" >/dev/null
 	if [ ! -f configure ] && [ -f configure.ac ]; then
 		autoreconf -fiv
 	fi
@@ -50,7 +50,7 @@ build_autotools() {
 	./configure --prefix="$prefix" --enable-static --disable-shared --with-pic "$@"
 	make -j"$(nproc)"
 	make install
-	popd > /dev/null
+	popd >/dev/null
 }
 
 build_make() {
@@ -58,10 +58,10 @@ build_make() {
 	local prefix="$2"
 	shift 2
 	echo "   -> Building with Make"
-	pushd "$dir" > /dev/null
+	pushd "$dir" >/dev/null
 	make -j"$(nproc)" PREFIX="$prefix" "$@"
 	make install PREFIX="$prefix" "$@"
-	popd > /dev/null
+	popd >/dev/null
 }
 
 build_library() {
@@ -69,7 +69,7 @@ build_library() {
 	local prefix="$2"
 	local name=$(basename "$dir")
 	echo "--- Compilando $name ---"
-	
+
 	# Exceptions for specific libraries
 	if [ "$name" == "frei0r" ]; then
 		build_cmake "$dir" "$prefix" -DWITHOUT_OPENCV=ON -DWITHOUT_CAIRO=ON -DWITHOUT_GAVL=ON -DWITHOUT_FACERECOGNITION=ON
@@ -81,16 +81,16 @@ build_library() {
 		return
 	fi
 	if [ "$name" == "openmpt" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --without-mpg123 --disable-openmpt123 --disable-examples --disable-tests
 		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 	if [ "$name" == "chromaprint" ]; then
 		build_cmake "$dir" "$prefix" -DBUILD_TOOLS=OFF -DBUILD_TESTS=OFF
-		echo "Libs.private: -lstdc++ -lm" >> "$prefix/lib/pkgconfig/libchromaprint.pc"
+		echo "Libs.private: -lstdc++ -lm" >>"$prefix/lib/pkgconfig/libchromaprint.pc"
 		return
 	fi
 	if [ "$name" == "sdl2" ]; then
@@ -98,94 +98,94 @@ build_library() {
 		return
 	fi
 	if [ "$name" == "iconv" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic
 		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 	if [ "$name" == "openssl" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		./config --prefix="$prefix" no-shared -fPIC
 		make -j"$(nproc)"
 		make install_sw
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 	if [ "$name" == "davs2" ] || [ "$name" == "xavs2" ]; then
-		pushd "$dir/build/linux" > /dev/null
+		pushd "$dir/build/linux" >/dev/null
 		./configure --prefix="$prefix" --enable-pic --disable-shared --disable-asm
 		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 	if [ "$name" == "libbluray" ]; then
 		rm -rf "$dir/subprojects/libudfread"
 	fi
 	if [ "$name" == "zlib" ] || [ "$name" == "libpng" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --static
 		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 	if [ "$name" == "x264" ] || [ "$name" == "x265" ]; then
 		# x264 uses configure, x265 uses cmake in source/
 		if [ "$name" == "x264" ]; then
-			pushd "$dir" > /dev/null
+			pushd "$dir" >/dev/null
 			./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli
 			make -j"$(nproc)"
 			make install
-			popd > /dev/null
+			popd >/dev/null
 		else
-			pushd "$dir/source" > /dev/null
+			pushd "$dir/source" >/dev/null
 			cmake . -DCMAKE_INSTALL_PREFIX="$prefix" -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 			make -j"$(nproc)"
 			make install
-			popd > /dev/null
+			popd >/dev/null
 		fi
 		return
 	fi
 
 	if [ "$name" == "lame" ] || [ "$name" == "libmp3lame" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		if [ ! -f configure ] && [ -f configure.ac ]; then
 			autoreconf -fiv
 		fi
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --disable-decoder
 		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 
 	if [ "$name" == "libpulse" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false -Dc_link_args="-L$prefix/lib -liconv"
 		ninja -C build
 		ninja -C build install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 
 	if [ "$name" == "libvmaf" ]; then
-		pushd "$dir/libvmaf" > /dev/null
+		pushd "$dir/libvmaf" >/dev/null
 		meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static
 		ninja -C build
 		ninja -C build install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 
 	if [ "$name" == "libvpx" ]; then
-		pushd "$dir" > /dev/null
+		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --disable-shared --enable-static --enable-pic --disable-examples --disable-unit-tests --disable-docs
-		make -j$(nproc)
+		make -j"$(nproc)"
 		make install
-		popd > /dev/null
+		popd >/dev/null
 		return
 	fi
 
@@ -213,8 +213,8 @@ compile_linux() {
 	echo "==================== Compilando librerías - Linux ====================="
 	local -x PREFIX="$COMPILATION_DIR/linux_x86_64"
 	local -x LINUX_ROOT="$TEMP_DIR/linux_x86_64"
-	rm -rf "$LINUX_ROOT" &&	mkdir -p "$LINUX_ROOT" &&	cp -r "$SRC_ROOT/"* "$LINUX_ROOT"
-	rm -rf "$PREFIX" &&	mkdir -p "$PREFIX"
+	rm -rf "$LINUX_ROOT" && mkdir -p "$LINUX_ROOT" && cp -r "$SRC_ROOT/"* "$LINUX_ROOT"
+	rm -rf "$PREFIX" && mkdir -p "$PREFIX"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x CFLAGS="-fPIC -O3"
 	local -x CXXFLAGS="-fPIC -O3"
@@ -244,9 +244,9 @@ compile_windows() {
 	echo "==================== Compilando librerías - Windows ====================="
 	local -x PREFIX="$COMPILATION_DIR/windows_x86_64"
 	local -x WINDOWS_ROOT="$TEMP_DIR/windows_x86_64"
-	rm -rf "$WINDOWS_ROOT" &&	mkdir -p "$WINDOWS_ROOT" &&	cp -r "$SRC_ROOT/"* "$WINDOWS_ROOT"
-	rm -rf "$PREFIX" &&	mkdir -p "$PREFIX"
-	
+	rm -rf "$WINDOWS_ROOT" && mkdir -p "$WINDOWS_ROOT" && cp -r "$SRC_ROOT/"* "$WINDOWS_ROOT"
+	rm -rf "$PREFIX" && mkdir -p "$PREFIX"
+
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x CROSS_PREFIX="x86_64-w64-mingw32-"
 	local -x CC="${CROSS_PREFIX}gcc"
@@ -276,19 +276,19 @@ compile_android() {
 	echo "==================== Compilando librerías - Android $ABI ====================="
 	local -x PREFIX="$COMPILATION_DIR/android_$ABI"
 	local -x ANDROID_ROOT="$TEMP_DIR/android_$ABI"
-	rm -rf "$ANDROID_ROOT" &&	mkdir -p "$ANDROID_ROOT" &&	cp -r "$SRC_ROOT/"* "$ANDROID_ROOT"
-	rm -rf "$PREFIX" &&	mkdir -p "$PREFIX"
+	rm -rf "$ANDROID_ROOT" && mkdir -p "$ANDROID_ROOT" && cp -r "$SRC_ROOT/"* "$ANDROID_ROOT"
+	rm -rf "$PREFIX" && mkdir -p "$PREFIX"
 
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 	local -x PKG_CONFIG_SYSROOT_DIR="/"
-	
+
 	local TARGET_HOST
 	case "$ABI" in
-		arm64-v8a) TARGET_HOST="aarch64-linux-android";;
-		armeabi-v7a) TARGET_HOST="armv7a-linux-androideabi";;
-		x86) TARGET_HOST="i686-linux-android";;
-		x86_64) TARGET_HOST="x86_64-linux-android";;
+	arm64-v8a) TARGET_HOST="aarch64-linux-android" ;;
+	armeabi-v7a) TARGET_HOST="armv7a-linux-androideabi" ;;
+	x86) TARGET_HOST="i686-linux-android" ;;
+	x86_64) TARGET_HOST="x86_64-linux-android" ;;
 	esac
 
 	local -x CC="$TOOLCHAIN/bin/${TARGET_HOST}${API_LEVEL}-clang"
@@ -302,11 +302,11 @@ compile_android() {
 		local -x ASFLAGS="-c"
 	fi
 	local -x LD="$CC"
-	
+
 	local -x CFLAGS="-fPIE -fPIC -O3"
 	local -x CXXFLAGS="-fPIE -fPIC -O3"
 	local -x LDFLAGS="-fPIE -pie"
-	
+
 	if [ "$ABI" = "x86" ]; then
 		CFLAGS="-fPIE -fPIC -O1"
 		CXXFLAGS="-fPIE -fPIC -O1"
@@ -321,7 +321,6 @@ compile_android() {
 	make -j"$(nproc)"
 	make install
 	popd
-
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
 	echo "==================== Compilación completada - Android $ABI ====================="

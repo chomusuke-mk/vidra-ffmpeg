@@ -106,13 +106,11 @@ download_if_missing "zimg" "https://github.com/sekrit-twc/zimg/archive/refs/tags
 download_if_missing "zvbi" "https://github.com/zapping-vbi/zvbi/archive/refs/tags/v0.2.44.tar.gz"
 download_if_missing "soxr" "https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz"
 
-
 # --- Extra Linux Libs ---
 download_if_missing "openssl" "https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz"
 download_if_missing "libxcb" "https://gitlab.freedesktop.org/xorg/lib/libxcb/-/archive/libxcb-1.16.1/libxcb-libxcb-1.16.1.tar.gz"
 download_if_missing "xlib" "https://gitlab.freedesktop.org/xorg/lib/libx11/-/archive/libX11-1.8.13/libx11-libX11-1.8.13.tar.gz"
 download_if_missing "libpulse" "https://gitlab.freedesktop.org/pulseaudio/pulseaudio/-/archive/v17.0/pulseaudio-v17.0.tar.gz"
 download_if_missing "libdrm" "https://gitlab.freedesktop.org/mesa/libdrm/-/archive/libdrm-2.4.134/libdrm-libdrm-2.4.134.tar.gz"
-
 
 echo "================ Dependencias descargadas ==================="

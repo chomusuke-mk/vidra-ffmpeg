@@ -1,0 +1,12 @@
+--- /dev/null
++++ uavs3d/version.h
+@@ -0,0 +1,9 @@
++#ifndef __VERSION_H__
++#define __VERSION_H__
++#define VER_MAJOR  1
++#define VER_MINOR  0
++#define VER_BUILD  0
++#define VERSION_TYPE "release"
++#define VERSION_STR  "1.0.0"
++#define VERSION_SHA1 "unknown"
++#endif // __VERSION_H__
