@@ -30,6 +30,7 @@ RUN pip3 install --break-system-packages meson glad2
 
 # Instalar Android NDK
 RUN wget https://dl.google.com/android/repository/android-ndk-r27d-linux.zip -O /tmp/android-ndk-linux.zip \
+    && mkdir -p /tmp/android-ndk-linux /opt/android-ndk-linux \
     && unzip /tmp/android-ndk-linux.zip -d /tmp/android-ndk-linux \
     && mv /tmp/android-ndk-linux/*/* /opt/android-ndk-linux \
     && rm -rf /tmp/android-ndk-linux.zip /tmp/android-ndk-linux
