@@ -23,8 +23,8 @@ patch --forward --batch -p0 <"$PATCHES_DIR/windows-msvcrt_compat.patch" || true
 echo "Agregando pkg-config"
 patch --forward --batch -p0 <"$PATCHES_DIR/windows-pkg-config.patch" || true
 
-echo "Parcheando uavs3d"
-patch --forward --batch -p0 <"$PATCHES_DIR/uavs3d-version.patch" || true
+echo "Parcheando libuavs3d"
+patch --forward --batch -p0 <"$PATCHES_DIR/libuavs3d-version.patch" || true
 
 echo "Parcheando libpulse"
 patch --forward --batch -p0 <"$PATCHES_DIR/libpulse-version.patch" || true
@@ -39,8 +39,8 @@ if [ -d "$SRC_ROOT/libjxl" ]; then
 fi
 
 echo "Descargando dependencias de shaderc"
-if [ -d "$SRC_ROOT/shaderc" ]; then
-	pushd "$SRC_ROOT/shaderc"
+if [ -d "$SRC_ROOT/libshaderc" ]; then
+	pushd "$SRC_ROOT/libshaderc"
 	./utils/git-sync-deps
 	popd
 fi

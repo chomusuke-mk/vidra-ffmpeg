@@ -141,7 +141,7 @@ build_library() {
 		popd >/dev/null
 		return
 	fi
-	if [ "$name" == "libdavs2" ] || [ "$name" == "xavs2" ]; then
+	if [ "$name" == "libdavs2" ] || [ "$name" == "libxavs2" ]; then
 		pushd "$dir/build/linux" >/dev/null
 		./configure --prefix="$prefix" --enable-pic --disable-shared --disable-asm
 		make -j"$(nproc)"

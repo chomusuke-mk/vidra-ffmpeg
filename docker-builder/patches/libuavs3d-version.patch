@@ -1,5 +1,5 @@
 --- /dev/null
-+++ uavs3d/version.h
++++ libuavs3d/version.h
 @@ -0,0 +1,9 @@
 +#ifndef __VERSION_H__
 +#define __VERSION_H__
