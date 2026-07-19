@@ -18,7 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libxcb1-dev libx11-dev libx11-xcb-dev libxext-dev libwayland-dev wayland-protocols libxrandr-dev \
   xutils-dev x11proto-dev xcb-proto python3-xcbgen \
   libxcursor-dev libxinerama-dev libxi-dev libxss-dev libxfixes-dev libxrender-dev libxkbcommon-dev libxtst-dev \
+  libxv-dev \
   && rm -rf /var/lib/apt/lists/*
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    . "$HOME/.cargo/env" && \
+    cargo install cargo-c
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN pip3 install --break-system-packages meson glad2
 
@@ -50,11 +56,11 @@ RUN chmod +x /docker-builder/*.sh
 ARG TARGET_OS=all
 ARG TARGET_ARCH=all
 RUN --mount=type=cache,target=/downloads \
-    mkdir -p /downloads /source /compiled && \
+    mkdir -p /downloads /source /compiled /vidra-tmp && \
     /docker-builder/download_deps.sh /downloads && \
     /docker-builder/extract_deps.sh /downloads /source && \
     /docker-builder/patch_deps.sh /docker-builder/patches /source && \
-    /docker-builder/build_libs.sh /source /compiled /tmp ${TARGET_OS} ${TARGET_ARCH} && \
-    rm -rf /source /docker-builder /tmp
+    /docker-builder/build_libs.sh /source /compiled /vidra-tmp ${TARGET_OS} ${TARGET_ARCH} && \
+    rm -rf /source /docker-builder /vidra-tmp
 
 ENV COMPILATION_DIR=/compiled

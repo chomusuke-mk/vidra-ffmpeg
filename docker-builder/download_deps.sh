@@ -4,8 +4,6 @@ set -euo pipefail
 DOWNLOADS_DIR="$(realpath "$1")"
 mkdir -p "$DOWNLOADS_DIR"
 
-echo "================ Descargando dependencias ==================="
-
 download_if_missing() {
 	local name=$1
 	local url=$2
@@ -34,6 +32,8 @@ download_if_missing() {
 		echo "$name ya descargado."
 	fi
 }
+
+echo "================ Descargando dependencias ==================="
 
 # --- Common Libs ---
 download_if_missing "iconv" "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.19.tar.gz"
@@ -68,7 +68,7 @@ download_if_missing "gme" "https://github.com/libgme/game-music-emu/releases/dow
 download_if_missing "kvazaar" "https://github.com/ultravideo/kvazaar/releases/download/v2.3.2/kvazaar-2.3.2.tar.gz"
 download_if_missing "libaribbcaption" "https://github.com/xqq/libaribcaption/archive/refs/tags/v1.1.1.tar.gz"
 download_if_missing "libass" "https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.gz"
-download_if_missing "libudfread" "https://code.videolan.org/videolan/libudfread/-/archive/1.1.2/libudfread-1.1.2.tar.gz"
+download_if_missing "libudfread" "https://code.videolan.org/videolan/libudfread/-/archive/1.2.0/libudfread-1.2.0.tar.gz"
 download_if_missing "libbluray" "https://code.videolan.org/videolan/libbluray/-/archive/1.4.1/libbluray-1.4.1.tar.gz"
 download_if_missing "libjxl" "https://github.com/libjxl/libjxl/archive/refs/tags/v0.12.0.tar.gz"
 download_if_missing "libmp3lame" "https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz"
@@ -76,6 +76,7 @@ download_if_missing "opus" "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1
 download_if_missing "placebo" "https://github.com/haasn/libplacebo/archive/refs/tags/v7.360.1.tar.gz"
 download_if_missing "rist" "https://code.videolan.org/rist/librist/-/archive/v0.2.17/librist-v0.2.17.tar.gz"
 download_if_missing "libssh" "https://gitlab.com/libssh/libssh-mirror/-/archive/libssh-0.12.0/libssh-mirror-libssh-0.12.0.tar.gz"
+download_if_missing "libogg" "https://downloads.xiph.org/releases/ogg/libogg-1.3.6.tar.gz"
 download_if_missing "theora" "https://ftp.osuosl.org/pub/xiph/releases/theora/libtheora-1.2.0.tar.xz"
 download_if_missing "libvpx" "https://github.com/webmproject/libvpx/archive/refs/tags/v1.16.0.tar.gz"
 download_if_missing "libwebp" "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz"
@@ -90,12 +91,12 @@ download_if_missing "openjpeg" "https://github.com/uclouvain/openjpeg/archive/re
 download_if_missing "openmpt" "https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.8.7+release.autotools.tar.gz"
 download_if_missing "rav1e" "https://github.com/xiph/rav1e/archive/refs/tags/v0.8.1.tar.gz"
 download_if_missing "rubberband" "https://github.com/breakfastquay/rubberband/archive/refs/tags/v4.0.0.tar.gz"
-download_if_missing "sdl2" "https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz"
+download_if_missing "libsdl2" "https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz"
 download_if_missing "snappy" "https://github.com/google/snappy/archive/refs/tags/1.2.2.tar.gz"
 download_if_missing "srt" "https://github.com/Haivision/srt/archive/refs/tags/v1.5.5.tar.gz"
 download_if_missing "svtav1" "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v4.2.0/SVT-AV1-v4.2.0.tar.gz"
 download_if_missing "twolame" "https://downloads.sourceforge.net/twolame/twolame-0.4.0.tar.gz"
-download_if_missing "uavs3d" "https://github.com/uavs3/uavs3d/archive/refs/tags/1.0.tar.gz"
+download_if_missing "uavs3d" "https://github.com/uavs3/uavs3d/archive/0e20d2c291853f196c68922a264bcd8471d75b68.tar.gz"
 download_if_missing "vid.stab" "https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz"
 download_if_missing "vvenc" "https://github.com/fraunhoferhhi/vvenc/archive/refs/tags/v1.14.0.tar.gz"
 download_if_missing "x264" "https://code.videolan.org/videolan/x264/-/archive/b35605ace3ddf7c1a5d67a2eb553f034aef41d55/x264-b35605ace3ddf7c1a5d67a2eb553f034aef41d55.tar.gz"
@@ -106,7 +107,14 @@ download_if_missing "zimg" "https://github.com/sekrit-twc/zimg/archive/refs/tags
 download_if_missing "zvbi" "https://github.com/zapping-vbi/zvbi/archive/refs/tags/v0.2.44.tar.gz"
 download_if_missing "soxr" "https://downloads.sourceforge.net/project/soxr/soxr-0.1.3-Source.tar.xz"
 
+download_if_missing "zix" "https://download.drobilla.net/zix-0.8.2.tar.xz"
+download_if_missing "serd" "https://download.drobilla.net/serd-0.32.10.tar.xz"
+download_if_missing "sord" "https://download.drobilla.net/sord-0.16.22.tar.xz"
+download_if_missing "sratom" "https://download.drobilla.net/sratom-0.6.22.tar.xz"
+download_if_missing "lilv" "https://download.drobilla.net/lilv-0.28.0.tar.xz"
+
 # --- Extra Linux Libs ---
+download_if_missing "libsndfile" "https://github.com/libsndfile/libsndfile/releases/download/1.2.2/libsndfile-1.2.2.tar.xz"
 download_if_missing "openssl" "https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz"
 download_if_missing "libxcb" "https://gitlab.freedesktop.org/xorg/lib/libxcb/-/archive/libxcb-1.16.1/libxcb-libxcb-1.16.1.tar.gz"
 download_if_missing "xlib" "https://gitlab.freedesktop.org/xorg/lib/libx11/-/archive/libX11-1.8.13/libx11-libX11-1.8.13.tar.gz"

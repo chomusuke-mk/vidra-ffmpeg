@@ -41,8 +41,8 @@ build_autotools() {
 	shift 2
 	echo "   -> Building with Autotools/Configure"
 	pushd "$dir" >/dev/null
-	if [ ! -f configure ] && [ -f configure.ac ]; then
-		autoreconf -fiv
+	if [ -f "configure.ac" ]; then
+		autoreconf -fiv || true
 	fi
 	if [ -f autogen.sh ]; then ./autogen.sh; fi
 	if [ -f bootstrap ]; then ./bootstrap; fi
@@ -80,6 +80,15 @@ build_library() {
 		cp -r "$dir/AMF/"* "$prefix/include/AMF/" 2>/dev/null || cp -r "$dir/"* "$prefix/include/AMF/"
 		return
 	fi
+	if [ "$name" == "aribb24" ]; then
+		pushd "$dir" >/dev/null
+		autoreconf -fiv
+		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic
+		make -j"$(nproc)"
+		make install
+		popd >/dev/null
+		return
+	fi
 	if [ "$name" == "openmpt" ]; then
 		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --without-mpg123 --disable-openmpt123 --disable-examples --disable-tests
@@ -93,8 +102,9 @@ build_library() {
 		echo "Libs.private: -lstdc++ -lm" >>"$prefix/lib/pkgconfig/libchromaprint.pc"
 		return
 	fi
-	if [ "$name" == "sdl2" ]; then
+	if [ "$name" == "libsdl2" ]; then
 		build_cmake "$dir" "$prefix" -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+		sed -i 's/Libs.private:/Libs.private: -liconv /g' "$prefix/lib/pkgconfig/sdl2.pc"
 		return
 	fi
 	if [ "$name" == "iconv" ]; then
@@ -130,6 +140,37 @@ build_library() {
 		make -j"$(nproc)"
 		make install
 		popd >/dev/null
+		return
+	fi
+
+	if [ "$name" == "libjxl" ]; then
+		build_cmake "$dir" "$prefix" -DJPEGXL_ENABLE_TOOLS=OFF -DJPEGXL_ENABLE_BENCHMARK=OFF -DJPEGXL_ENABLE_EXAMPLES=OFF -DJPEGXL_ENABLE_JNI=OFF -DJPEGXL_ENABLE_SKIA=OFF
+		# Fix missing C++ standard library in pkg-config files for static builds
+		sed -i 's/-ljxl_threads/-ljxl_threads -lstdc++/g' "$prefix/lib/pkgconfig/libjxl_threads.pc"
+		sed -i 's/-ljxl /-ljxl -lstdc++ /g' "$prefix/lib/pkgconfig/libjxl.pc"
+		sed -i 's/-ljxl_cms /-ljxl_cms -lstdc++ /g' "$prefix/lib/pkgconfig/libjxl_cms.pc" || true
+		return
+	fi
+
+	if [ "$name" == "liblcevc" ]; then
+		build_cmake "$dir" "$prefix"
+		# Fix link order in pkg-config file for static builds (C++ stdlib must be at the end)
+		sed -i 's/-lstdc++ -lm //g' "$prefix/lib/pkgconfig/lcevc_dec.pc"
+		sed -i 's/^Libs:.*/& -lstdc++ -lm/' "$prefix/lib/pkgconfig/lcevc_dec.pc"
+		return
+	fi
+
+	if [ "$name" == "libvpl" ]; then
+		build_cmake "$dir" "$prefix"
+		# Fix missing C++ stdlib and math for static builds
+		sed -i 's/Libs.private:/Libs.private: -lstdc++ -lm/g' "$prefix/lib/pkgconfig/vpl.pc"
+		return
+	fi
+
+	if [ "$name" == "kvazaar" ]; then
+		build_autotools "$dir" "$prefix"
+		# Fix missing math and pthread libraries in pkg-config file for static builds
+		sed -i 's/Libs.private:/Libs.private: -lm -lpthread/g' "$prefix/lib/pkgconfig/kvazaar.pc"
 		return
 	fi
 	if [ "$name" == "x264" ] || [ "$name" == "x265" ]; then
@@ -180,7 +221,7 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "libvpx" ]; then
+	if [ "$name" == "libvpx" ] || [ "$name" == "vpx" ]; then
 		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --disable-shared --enable-static --enable-pic --disable-examples --disable-unit-tests --disable-docs
 		make -j"$(nproc)"
@@ -194,12 +235,66 @@ build_library() {
 		return
 	fi
 
+	if [ "$name" == "rav1e" ]; then
+		cd "$dir"
+		cargo cinstall --release --prefix="$prefix" --libdir="lib" --library-type=staticlib
+		return
+	fi
+
+	if [ "$name" == "rubberband" ]; then
+		build_meson "$dir" "$prefix"
+		sed -i 's/^Libs:.*/& -lstdc++ -lm/' "$prefix/lib/pkgconfig/rubberband.pc"
+		return
+	fi
+
+	if [ "$name" == "openh264" ]; then
+		pushd "$dir" >/dev/null
+		make -j"$(nproc)" PREFIX="$prefix" install
+		sed -i 's/^Libs:.*/& -lstdc++/' "$prefix/lib/pkgconfig/openh264.pc"
+		popd >/dev/null
+		return
+	fi
+
+	if [ "$name" == "openmpt" ]; then
+		build_autotools "$dir" "$prefix" --disable-openmpt123
+		# Fix missing C++ stdlib and math for static builds
+		sed -i 's/Libs.private:/Libs.private: -lstdc++ -lm/g' "$prefix/lib/pkgconfig/libopenmpt.pc"
+		return
+	fi
+
+	if [ "$name" == "placebo" ]; then
+		build_meson "$dir" "$prefix" -Ddemos=false
+		sed -i 's/^Libs:.*/& -lstdc++/' "$prefix/lib/pkgconfig/libplacebo.pc"
+		return
+	fi
+
+	if [ "$name" == "soxr" ]; then
+		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DWITH_OPENMP=OFF
+		sed -i 's/^Libs:.*/& -lm/' "$prefix/lib/pkgconfig/soxr.pc"
+		return
+	fi
+
+	if [ "$name" == "libssh" ]; then
+		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF
+		sed -i 's/Requires.private:.*/& libcrypto zlib/' "$prefix/lib/pkgconfig/libssh.pc"
+		return
+	fi
+
+	if [ "$name" == "xvid" ]; then
+		pushd "$dir/build/generic" >/dev/null
+		./configure --prefix="$prefix" --disable-shared
+		make -j"$(nproc)"
+		make install
+		popd >/dev/null
+		return
+	fi
+
 	# Generic Detection
 	if [ -f "$dir/CMakeLists.txt" ]; then
 		build_cmake "$dir" "$prefix"
 	elif [ -f "$dir/meson.build" ]; then
 		build_meson "$dir" "$prefix"
-	elif [ -f "$dir/configure" ] || [ -f "$dir/autogen.sh" ]; then
+	elif [ -f "$dir/configure" ] || [ -f "$dir/autogen.sh" ] || [ -f "$dir/configure.ac" ]; then
 		build_autotools "$dir" "$prefix"
 	elif [ -f "$dir/Makefile" ]; then
 		build_make "$dir" "$prefix"
@@ -220,7 +315,7 @@ compile_linux() {
 	local -x CXXFLAGS="-fPIC -O3"
 
 	# Dependencies that must be built first
-	local PRIORITY_LIBS="libsndfile libudfread dvdread"
+	local PRIORITY_LIBS="libsndfile libudfread dvdread lv2 zix serd sord sratom lilv"
 	for lib in $PRIORITY_LIBS; do
 		if [ -d "$LINUX_ROOT/$lib" ]; then
 			build_library "$LINUX_ROOT/$lib" "$PREFIX"
@@ -262,10 +357,25 @@ compile_windows() {
 	TOOLCHAIN_FILE="$WINDOWS_ROOT/windows-toolchain.cmake"
 	MESON_CROSS_FILE="$WINDOWS_ROOT/windows-meson-cross.txt"
 
-	echo "--- Compilando iconv ---"
-	pushd "$WINDOWS_ROOT/iconv"
+	# Dependencies that must be built first
+	local PRIORITY_LIBS="libudfread dvdread lv2 zix serd sord sratom lilv"
+	for lib in $PRIORITY_LIBS; do
+		if [ -d "$WINDOWS_ROOT/$lib" ]; then
+			build_library "$WINDOWS_ROOT/$lib" "$PREFIX"
+		fi
+	done
 
-	popd
+	# Extra Linux libs to skip
+	local EXTRA_LINUX_LIBS="libsndfile openssl libxcb xlib libpulse libdrm"
+
+	for lib_dir in "$WINDOWS_ROOT"/*; do
+		if [ -d "$lib_dir" ]; then
+			local name=$(basename "$lib_dir")
+			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]] && [[ ! " $EXTRA_LINUX_LIBS " =~ " $name " ]]; then
+				build_library "$lib_dir" "$PREFIX"
+			fi
+		fi
+	done
 
 	echo "Archivos de dependencias precompiladas copiados a /mingw64/"
 	echo "============ Compilación completada - Windows ====================="
@@ -315,12 +425,25 @@ compile_android() {
 	local TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
 	local MESON_CROSS_FILE="$ANDROID_ROOT/android-${ABI}-meson-cross.txt"
 
-	echo "--- Compilando iconv ---"
-	pushd "$ANDROID_ROOT/iconv"
-	./configure --prefix="$PREFIX" --static --archs=-fPIC
-	make -j"$(nproc)"
-	make install
-	popd
+	# Dependencies that must be built first
+	local PRIORITY_LIBS="libudfread dvdread lv2 zix serd sord sratom lilv"
+	for lib in $PRIORITY_LIBS; do
+		if [ -d "$ANDROID_ROOT/$lib" ]; then
+			build_library "$ANDROID_ROOT/$lib" "$PREFIX"
+		fi
+	done
+
+	# Extra Linux libs to skip
+	local EXTRA_LINUX_LIBS="libsndfile openssl libxcb xlib libpulse libdrm"
+
+	for lib_dir in "$ANDROID_ROOT"/*; do
+		if [ -d "$lib_dir" ]; then
+			local name=$(basename "$lib_dir")
+			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]] && [[ ! " $EXTRA_LINUX_LIBS " =~ " $name " ]]; then
+				build_library "$lib_dir" "$PREFIX"
+			fi
+		fi
+	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
 	echo "==================== Compilación completada - Android $ABI ====================="

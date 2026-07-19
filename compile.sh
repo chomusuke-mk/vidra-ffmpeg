@@ -14,6 +14,8 @@ echo "=== Preparando el entorno ==="
 rm -rf /dist/*
 mkdir -p /dist
 
+# Parche urgente para sdl2.pc (agrega -liconv a Libs en lugar de Libs.private)
+find /compiled -name "sdl2.pc" -exec sed -i 's/^Libs: .*/& -liconv/' {} +
 echo "Descargando código fuente de FFmpeg (versión: $FFMPEG_VERSION)..."
 TAR_URL="https://github.com/${FFMPEG_REPO}/archive/${FFMPEG_VERSION}.tar.gz"
 
@@ -56,6 +58,7 @@ build_linux() {
 		--disable-doc \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-L$LIBS_PREFIX/lib" \
+		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		$feature_flags
 
 	make -j"$(nproc)"
