@@ -17,7 +17,11 @@ build_cmake() {
 	echo "   -> Building with CMake"
 	mkdir -p "$dir/build"
 	pushd "$dir/build" >/dev/null
-	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
+	local toolchain_arg=""
+	if [ -n "${TOOLCHAIN_FILE:-}" ] && [ -f "$TOOLCHAIN_FILE" ]; then
+		toolchain_arg="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE"
+	fi
+	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" $toolchain_arg -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
 	make -j"$(nproc)"
 	make install
 	popd >/dev/null
@@ -29,7 +33,11 @@ build_meson() {
 	shift 2
 	echo "   -> Building with Meson"
 	pushd "$dir" >/dev/null
-	meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static "$@"
+	local cross_arg=""
+	if [ -n "${MESON_CROSS_FILE:-}" ] && [ -f "$MESON_CROSS_FILE" ]; then
+		cross_arg="--cross-file=$MESON_CROSS_FILE"
+	fi
+	meson setup build --prefix="$prefix" $cross_arg --libdir="lib" --buildtype=release --default-library=static "$@"
 	ninja -C build
 	ninja -C build install
 	popd >/dev/null
@@ -47,7 +55,13 @@ build_autotools() {
 	if [ -f autogen.sh ]; then ./autogen.sh; fi
 	if [ -f bootstrap ]; then ./bootstrap; fi
 	if [ -f autogen.sh ]; then ./autogen.sh; fi
-	./configure --prefix="$prefix" --enable-static --disable-shared --with-pic "$@"
+	local host_arg=""
+	if [ -n "${HOST:-}" ]; then
+		host_arg="--host=$HOST"
+	elif [ -n "${TARGET_HOST:-}" ]; then
+		host_arg="--host=$TARGET_HOST"
+	fi
+	./configure --prefix="$prefix" $host_arg --enable-static --disable-shared --with-pic "$@"
 	make -j"$(nproc)"
 	make install
 	popd >/dev/null
@@ -71,6 +85,10 @@ build_library() {
 	echo "--- Compilando $name ---"
 
 	# Exceptions for specific libraries
+	if [ "$name" == "zix" ]; then
+		build_meson "$dir" "$prefix" -Dtests=disabled -Dbenchmarks=disabled
+		return
+	fi
 	if [ "$name" == "frei0r" ]; then
 		build_cmake "$dir" "$prefix" -DWITHOUT_OPENCV=ON -DWITHOUT_CAIRO=ON -DWITHOUT_GAVL=ON -DWITHOUT_FACERECOGNITION=ON
 		return
@@ -80,7 +98,7 @@ build_library() {
 		cp -r "$dir/AMF/"* "$prefix/include/AMF/" 2>/dev/null || cp -r "$dir/"* "$prefix/include/AMF/"
 		return
 	fi
-	if [ "$name" == "aribb24" ]; then
+	if [ "$name" == "libaribb24" ]; then
 		pushd "$dir" >/dev/null
 		autoreconf -fiv
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic
@@ -89,7 +107,7 @@ build_library() {
 		popd >/dev/null
 		return
 	fi
-	if [ "$name" == "openmpt" ]; then
+	if [ "$name" == "libopenmpt" ]; then
 		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic --without-mpg123 --disable-openmpt123 --disable-examples --disable-tests
 		make -j"$(nproc)"
@@ -102,7 +120,7 @@ build_library() {
 		echo "Libs.private: -lstdc++ -lm" >>"$prefix/lib/pkgconfig/libchromaprint.pc"
 		return
 	fi
-	if [ "$name" == "libsdl2" ]; then
+	if [ "$name" == "sdl2" ]; then
 		build_cmake "$dir" "$prefix" -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
 		sed -i 's/Libs.private:/Libs.private: -liconv /g' "$prefix/lib/pkgconfig/sdl2.pc"
 		return
@@ -123,7 +141,7 @@ build_library() {
 		popd >/dev/null
 		return
 	fi
-	if [ "$name" == "davs2" ] || [ "$name" == "xavs2" ]; then
+	if [ "$name" == "libdavs2" ] || [ "$name" == "xavs2" ]; then
 		pushd "$dir/build/linux" >/dev/null
 		./configure --prefix="$prefix" --enable-pic --disable-shared --disable-asm
 		make -j"$(nproc)"
@@ -133,6 +151,9 @@ build_library() {
 	fi
 	if [ "$name" == "libbluray" ]; then
 		rm -rf "$dir/subprojects/libudfread"
+		find "$dir" -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/\bdec_init\b/bluray_dec_init/g' {} +
+		find "$dir" -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/\bdir_open_default\b/bluray_dir_open_default/g' {} +
+		find "$dir" -type f \( -name "*.c" -o -name "*.h" \) -exec sed -i 's/\bfile_open_default\b/bluray_file_open_default/g' {} +
 	fi
 	if [ "$name" == "zlib" ] || [ "$name" == "libpng" ]; then
 		pushd "$dir" >/dev/null
@@ -152,6 +173,11 @@ build_library() {
 		return
 	fi
 
+	if [ "$name" == "libharfbuzz" ]; then
+		build_meson "$dir" "$prefix" -Dfreetype=enabled -Dtests=disabled -Ddocs=disabled -Dglib=disabled -Dgobject=disabled
+		return
+	fi
+
 	if [ "$name" == "liblcevc" ]; then
 		build_cmake "$dir" "$prefix"
 		# Fix link order in pkg-config file for static builds (C++ stdlib must be at the end)
@@ -167,15 +193,15 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "kvazaar" ]; then
+	if [ "$name" == "libkvazaar" ]; then
 		build_autotools "$dir" "$prefix"
 		# Fix missing math and pthread libraries in pkg-config file for static builds
 		sed -i 's/Libs.private:/Libs.private: -lm -lpthread/g' "$prefix/lib/pkgconfig/kvazaar.pc"
 		return
 	fi
-	if [ "$name" == "x264" ] || [ "$name" == "x265" ]; then
+	if [ "$name" == "libx264" ] || [ "$name" == "libx265" ]; then
 		# x264 uses configure, x265 uses cmake in source/
-		if [ "$name" == "x264" ]; then
+		if [ "$name" == "libx264" ]; then
 			pushd "$dir" >/dev/null
 			./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli
 			make -j"$(nproc)"
@@ -191,7 +217,7 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "lame" ] || [ "$name" == "libmp3lame" ]; then
+	if [ "$name" == "lame" ] || [ "$name" == "libtwolame" ]; then
 		pushd "$dir" >/dev/null
 		if [ ! -f configure ] && [ -f configure.ac ]; then
 			autoreconf -fiv
@@ -235,19 +261,19 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "rav1e" ]; then
+	if [ "$name" == "librav1e" ]; then
 		cd "$dir"
 		cargo cinstall --release --prefix="$prefix" --libdir="lib" --library-type=staticlib
 		return
 	fi
 
-	if [ "$name" == "rubberband" ]; then
+	if [ "$name" == "librubberband" ]; then
 		build_meson "$dir" "$prefix"
 		sed -i 's/^Libs:.*/& -lstdc++ -lm/' "$prefix/lib/pkgconfig/rubberband.pc"
 		return
 	fi
 
-	if [ "$name" == "openh264" ]; then
+	if [ "$name" == "libopenh264" ]; then
 		pushd "$dir" >/dev/null
 		make -j"$(nproc)" PREFIX="$prefix" install
 		sed -i 's/^Libs:.*/& -lstdc++/' "$prefix/lib/pkgconfig/openh264.pc"
@@ -255,20 +281,20 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "openmpt" ]; then
+	if [ "$name" == "libopenmpt" ]; then
 		build_autotools "$dir" "$prefix" --disable-openmpt123
 		# Fix missing C++ stdlib and math for static builds
 		sed -i 's/Libs.private:/Libs.private: -lstdc++ -lm/g' "$prefix/lib/pkgconfig/libopenmpt.pc"
 		return
 	fi
 
-	if [ "$name" == "placebo" ]; then
+	if [ "$name" == "libplacebo" ]; then
 		build_meson "$dir" "$prefix" -Ddemos=false
 		sed -i 's/^Libs:.*/& -lstdc++/' "$prefix/lib/pkgconfig/libplacebo.pc"
 		return
 	fi
 
-	if [ "$name" == "soxr" ]; then
+	if [ "$name" == "libsoxr" ]; then
 		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DWITH_OPENMP=OFF
 		sed -i 's/^Libs:.*/& -lm/' "$prefix/lib/pkgconfig/soxr.pc"
 		return
@@ -280,7 +306,7 @@ build_library() {
 		return
 	fi
 
-	if [ "$name" == "xvid" ]; then
+	if [ "$name" == "libxvid" ]; then
 		pushd "$dir/build/generic" >/dev/null
 		./configure --prefix="$prefix" --disable-shared
 		make -j"$(nproc)"
@@ -315,19 +341,96 @@ compile_linux() {
 	local -x CXXFLAGS="-fPIC -O3"
 
 	# Dependencies that must be built first
-	local PRIORITY_LIBS="libsndfile libudfread dvdread lv2 zix serd sord sratom lilv"
-	for lib in $PRIORITY_LIBS; do
+	local LIBS="
+	libsndfile
+	libudfread
+	libdvdread
+	lv2
+	zix
+	serd
+	sord
+	sratom
+	lilv
+	libogg
+
+	vulkan-headers
+	vulkan-loader
+	opencl-headers
+	opencl-icd-loader
+	nv-codec-headers
+
+	iconv
+	zlib
+	libxml2
+	libvmaf
+	fontconfig
+	libharfbuzz
+	libfreetype
+	libfribidi
+	libshaderc
+	libvorbis
+	gmp
+	lzma
+	liblcevc
+	amf
+	libaom
+	libaribb24
+	avisynth
+	chromaprint
+	libdav1d
+	libdavs2
+	libdvdnav
+	frei0r
+	libgme
+	libkvazaar
+	libaribcaption
+	libass
+	libbluray
+	libjxl
+	lame
+	libopus
+	libplacebo
+	librist
+	libssh
+	libtheora
+	libvpx
+	libwebp
+	libzmq
+	libvpl
+	openal
+	liboapv
+	opencore-amr
+	libopenh264
+	libopenjpeg
+	libopenmpt
+	librav1e
+	librubberband
+	sdl2
+	libsnappy
+	libsrt
+	libsvtav1
+	libtwolame
+	libuavs3d
+	libva
+	libvidstab
+	libvvenc
+	libx264
+	libx265
+	libxavs2
+	libxvid
+	libzimg
+	libzvbi
+	libsoxr
+
+	libxcb
+	openssl
+	xlib
+	libpulse
+	libdrm
+	"
+	for lib in $LIBS; do
 		if [ -d "$LINUX_ROOT/$lib" ]; then
 			build_library "$LINUX_ROOT/$lib" "$PREFIX"
-		fi
-	done
-
-	for lib_dir in "$LINUX_ROOT"/*; do
-		if [ -d "$lib_dir" ]; then
-			local name=$(basename "$lib_dir")
-			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]]; then
-				build_library "$lib_dir" "$PREFIX"
-			fi
 		fi
 	done
 
@@ -362,18 +465,6 @@ compile_windows() {
 	for lib in $PRIORITY_LIBS; do
 		if [ -d "$WINDOWS_ROOT/$lib" ]; then
 			build_library "$WINDOWS_ROOT/$lib" "$PREFIX"
-		fi
-	done
-
-	# Extra Linux libs to skip
-	local EXTRA_LINUX_LIBS="libsndfile openssl libxcb xlib libpulse libdrm"
-
-	for lib_dir in "$WINDOWS_ROOT"/*; do
-		if [ -d "$lib_dir" ]; then
-			local name=$(basename "$lib_dir")
-			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]] && [[ ! " $EXTRA_LINUX_LIBS " =~ " $name " ]]; then
-				build_library "$lib_dir" "$PREFIX"
-			fi
 		fi
 	done
 

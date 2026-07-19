@@ -9,7 +9,6 @@ services:
     container_name: vidra-ffmpeg-builder
     volumes:
       - ./dist:/dist
-      - ./temp/sources:/source
       - ./config.sh:/config.sh:ro
       - ./compile.sh:/compile.sh:ro
-    entrypoint: ["bash", "/compile.sh", "all", "all"]
+    entrypoint: ["bash", "/compile.sh", "linux", "all"]

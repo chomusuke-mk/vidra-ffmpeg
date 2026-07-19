@@ -109,7 +109,7 @@ build_windows() {
 		--optflags="$optflags" \
 		--extra-cflags="-static -std=gnu11 -I$LIBS_PREFIX/include -I$WIN_SYSROOT/include -DLIBSSH_STATIC -D_ISOC11_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DWIN32_LEAN_AND_MEAN -D__USE_MINGW_ANSI_STDIO=1 -D_POSIX_C_SOURCE=200112 -D_XOPEN_SOURCE=600 -DPIC" \
 		--extra-ldflags="$EXTRA_LDFLAGS_COMPAT -static -static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
-		--extra-libs="-static-libgcc -static-libstdc++ -lgomp -lssl -lcrypto -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lstdc++ -lwinpthread -lharfbuzz -lfreetype -lgraphite2 -lrpcrt4 -lusp10 -lole32" \
+		--extra-libs="-static-libgcc -static-libstdc++ -lgomp -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lstdc++ -lwinpthread -lharfbuzz -lfreetype -lgraphite2 -lrpcrt4 -lusp10 -lole32" \
 		$feature_flags
 
 	make -j"$(nproc)"
