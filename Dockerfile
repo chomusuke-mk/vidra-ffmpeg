@@ -29,12 +29,10 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN pip3 install --break-system-packages meson glad2
 
 # Instalar Android NDK
-ARG NDK_VERSION=r27d
-WORKDIR /opt
-RUN wget -q https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip \
-    && unzip -q android-ndk-${NDK_VERSION}-linux.zip \
-    && mv android-ndk-${NDK_VERSION} android-ndk-linux \
-    && rm android-ndk-${NDK_VERSION}-linux.zip
+RUN wget https://dl.google.com/android/repository/android-ndk-r27d-linux.zip -O /tmp/android-ndk-linux.zip \
+    && unzip /tmp/android-ndk-linux.zip -d /tmp/android-ndk-linux \
+    && mv /tmp/android-ndk-linux/*/* /opt/android-ndk-linux \
+    && rm -rf /tmp/android-ndk-linux.zip /tmp/android-ndk-linux
 ENV ANDROID_NDK_HOME=/opt/android-ndk-linux
 
 # Instalar CUDA Toolkit
@@ -53,14 +51,16 @@ COPY docker-builder /docker-builder
 RUN chmod +x /docker-builder/*.sh
 
 # 3. MEGA-CAPA: Descargar, parchear, compilar y DESTRUIR rastros
+WORKDIR /vidra
 ARG TARGET_OS=all
 ARG TARGET_ARCH=all
 RUN --mount=type=cache,target=/downloads \
-    mkdir -p /downloads /source /compiled /vidra-tmp && \
+    mkdir -p /downloads /source /compiled /vidra-tmp /vidra && \
     /docker-builder/download_deps.sh /downloads && \
     /docker-builder/extract_deps.sh /downloads /source && \
     /docker-builder/patch_deps.sh /docker-builder/patches /source && \
     /docker-builder/build_libs.sh /source /compiled /vidra-tmp ${TARGET_OS} ${TARGET_ARCH} && \
-    rm -rf /source /docker-builder /vidra-tmp
+    rm -rf /source /docker-builder /vidra-tmp /vidra && \
+    mkdir -p /vidra
 
 ENV COMPILATION_DIR=/compiled
