@@ -78,6 +78,7 @@ download_if_missing "frei0r" "https://github.com/dyne/frei0r/archive/refs/tags/v
 download_if_missing "libgme" "https://github.com/libgme/game-music-emu/releases/download/0.6.5/libgme-0.6.5-src.tar.gz"
 download_if_missing "libkvazaar" "https://github.com/ultravideo/kvazaar/releases/download/v2.3.2/kvazaar-2.3.2.tar.gz"
 download_if_missing "libaribcaption" "https://github.com/xqq/libaribcaption/archive/refs/tags/v1.1.1.tar.gz"
+download_if_missing "libunibreak" "https://github.com/adah1972/libunibreak/releases/download/libunibreak_6_1/libunibreak-6.1.tar.gz"
 download_if_missing "libass" "https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.gz"
 download_if_missing "libbluray" "https://code.videolan.org/videolan/libbluray/-/archive/1.4.1/libbluray-1.4.1.tar.gz"
 download_if_missing "libjxl" "https://github.com/libjxl/libjxl/archive/refs/tags/v0.12.0.tar.gz"

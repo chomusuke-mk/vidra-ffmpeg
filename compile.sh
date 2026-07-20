@@ -57,9 +57,12 @@ build_linux() {
 		--disable-ffplay \
 		--disable-doc \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
-		--extra-ldflags="-L$LIBS_PREFIX/lib" \
+		--extra-ldflags="-static -L$LIBS_PREFIX/lib" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
-		$feature_flags
+		$feature_flags || {
+		tail -n 100 ffbuild/config.log
+		exit 1
+	}
 
 	make -j"$(nproc)"
 

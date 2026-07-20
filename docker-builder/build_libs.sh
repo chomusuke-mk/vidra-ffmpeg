@@ -21,7 +21,7 @@ build_cmake() {
 	if [ -n "${TOOLCHAIN_FILE:-}" ] && [ -f "$TOOLCHAIN_FILE" ]; then
 		toolchain_arg="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE"
 	fi
-	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" $toolchain_arg -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
+	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" "$toolchain_arg" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
 	make -j"$(nproc)"
 	make install
 	popd >/dev/null
@@ -37,7 +37,7 @@ build_meson() {
 	if [ -n "${MESON_CROSS_FILE:-}" ] && [ -f "$MESON_CROSS_FILE" ]; then
 		cross_arg="--cross-file=$MESON_CROSS_FILE"
 	fi
-	meson setup build --prefix="$prefix" $cross_arg --libdir="lib" --buildtype=release --default-library=static "$@"
+	meson setup build --prefix="$prefix" "$cross_arg" --libdir="lib" --buildtype=release --default-library=static "$@"
 	ninja -C build
 	ninja -C build install
 	popd >/dev/null
@@ -61,7 +61,7 @@ build_autotools() {
 	elif [ -n "${TARGET_HOST:-}" ]; then
 		host_arg="--host=$TARGET_HOST"
 	fi
-	./configure --prefix="$prefix" $host_arg --enable-static --disable-shared --with-pic "$@"
+	./configure --prefix="$prefix" "$host_arg" --enable-static --disable-shared --with-pic "$@"
 	make -j"$(nproc)"
 	make install
 	popd >/dev/null
@@ -193,6 +193,28 @@ build_library() {
 		return
 	fi
 
+	if [ "$name" == "libgme" ]; then
+		build_cmake "$dir" "$prefix"
+		sed -i 's/-lgcc_s//g; s/-lgcc//g; s/-lc //g' "$prefix/lib/pkgconfig/libgme.pc" || true
+		return
+	fi
+	if [ "$name" == "vulkan-loader" ]; then
+		sed -i 's/add_library(vulkan SHARED)/add_library(vulkan STATIC)/g' "$dir/loader/CMakeLists.txt"
+		sed -i 's/install(TARGETS vulkan EXPORT VulkanLoaderConfig)/install(TARGETS vulkan DESTINATION lib)/g' "$dir/loader/CMakeLists.txt"
+		sed -i '/install(EXPORT VulkanLoaderConfig/d' "$dir/loader/CMakeLists.txt"
+		build_cmake "$dir" "$prefix"
+		return
+	fi
+	if [ "$name" == "libshaderc" ]; then
+		build_cmake "$dir" "$prefix"
+		sed -i 's/-lshaderc_shared/-lshaderc_combined/g' "$prefix/lib/pkgconfig/shaderc.pc" || true
+		return
+	fi
+	if [ "$name" == "libsrt" ]; then
+		build_cmake "$dir" "$prefix" -DENABLE_SHARED=OFF -DENABLE_STATIC=ON
+		sed -i 's/-lgcc_s//g; s/-lgcc//g; s/-lc //g' "$prefix/lib/pkgconfig/srt.pc" || true
+		return
+	fi
 	if [ "$name" == "libkvazaar" ]; then
 		build_autotools "$dir" "$prefix"
 		# Fix missing math and pthread libraries in pkg-config file for static builds
@@ -212,6 +234,7 @@ build_library() {
 			cmake . -DCMAKE_INSTALL_PREFIX="$prefix" -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 			make -j"$(nproc)"
 			make install
+			sed -i 's/-lgcc_s//g; s/-lc //g' "$prefix/lib/pkgconfig/x265.pc" || true
 			popd >/dev/null
 		fi
 		return
@@ -231,6 +254,7 @@ build_library() {
 
 	if [ "$name" == "libpulse" ]; then
 		pushd "$dir" >/dev/null
+		find . -type f -name meson.build -exec sed -i 's/shared_library(/library(/g' {} +
 		meson setup build --prefix="$prefix" --libdir="lib" --buildtype=release --default-library=static -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false -Dc_link_args="-L$prefix/lib -liconv"
 		ninja -C build
 		ninja -C build install
@@ -264,6 +288,7 @@ build_library() {
 	if [ "$name" == "librav1e" ]; then
 		cd "$dir"
 		cargo cinstall --release --prefix="$prefix" --libdir="lib" --library-type=staticlib
+		sed -i 's/-lgcc_s//g; s/-lc //g' "$prefix/lib/pkgconfig/rav1e.pc" || true
 		return
 	fi
 
@@ -301,7 +326,7 @@ build_library() {
 	fi
 
 	if [ "$name" == "libssh" ]; then
-		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF
+		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF -DWITH_GSSAPI=OFF
 		sed -i 's/Requires.private:.*/& libcrypto zlib/' "$prefix/lib/pkgconfig/libssh.pc"
 		return
 	fi
@@ -384,6 +409,7 @@ compile_linux() {
 	libgme
 	libkvazaar
 	libaribcaption
+	libunibreak
 	libass
 	libbluray
 	libjxl
