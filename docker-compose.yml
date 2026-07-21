@@ -3,12 +3,12 @@ services:
     build:
       context: .
       args:
-        - TARGET_OS=linux
-        - TARGET_ARCH=x86_64
+        - TARGET_OS=android
+        - TARGET_ARCH=arm64-v8a
     image: javiermk/vidra-ffmpeg:latest
     container_name: vidra-ffmpeg-builder
     volumes:
       - ./dist:/dist
       - ./config.sh:/config.sh:ro
       - ./compile.sh:/compile.sh:ro
-    entrypoint: ["bash", "/compile.sh", "linux", "x86_64"]
+    entrypoint: ["bash", "/compile.sh", "android", "arm64-v8a"]

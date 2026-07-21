@@ -58,7 +58,7 @@ build_linux() {
 		--disable-doc \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-static -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
-		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
+		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic -liconv" \
 		$feature_flags || {
 		tail -n 100 ffbuild/config.log
 		exit 1

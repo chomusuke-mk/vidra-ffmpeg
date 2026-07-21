@@ -410,7 +410,15 @@ build_library() {
 
 	if [ "$name" == "libssh" ]; then
 		mkdir -p "$dir/cmake/Modules"
-		echo -e "set(OPENSSL_FOUND TRUE)\nset(OPENSSL_CRYPTO_LIBRARY \"$prefix/lib/libcrypto.a\")\nset(OPENSSL_SSL_LIBRARY \"$prefix/lib/libssl.a\")\nset(OPENSSL_LIBRARIES \"$prefix/lib/libssl.a\" \"$prefix/lib/libcrypto.a\" \"ws2_32\" \"gdi32\" \"crypt32\")\nset(OPENSSL_INCLUDE_DIR \"$prefix/include\")\nset(OPENSSL_VERSION \"1.1.1\")\nadd_library(OpenSSL::Crypto UNKNOWN IMPORTED)\nset_target_properties(OpenSSL::Crypto PROPERTIES IMPORTED_LOCATION \"$prefix/lib/libcrypto.a\" INTERFACE_INCLUDE_DIRECTORIES \"$prefix/include\" INTERFACE_LINK_LIBRARIES \"ws2_32;gdi32;crypt32\")\nadd_library(OpenSSL::SSL UNKNOWN IMPORTED)\nset_target_properties(OpenSSL::SSL PROPERTIES IMPORTED_LOCATION \"$prefix/lib/libssl.a\" INTERFACE_INCLUDE_DIRECTORIES \"$prefix/include\" INTERFACE_LINK_LIBRARIES \"OpenSSL::Crypto\")" > "$dir/cmake/Modules/FindOpenSSL.cmake"
+		local ssl_sys_libs=""
+		if [ "${TARGET_OS:-}" == "windows" ]; then
+			ssl_sys_libs="\"ws2_32\" \"gdi32\" \"crypt32\""
+			ssl_sys_libs_cmake="\"ws2_32;gdi32;crypt32\""
+		else
+			ssl_sys_libs="\"pthread\" \"dl\""
+			ssl_sys_libs_cmake="\"pthread;dl\""
+		fi
+		echo -e "set(OPENSSL_FOUND TRUE)\nset(OPENSSL_CRYPTO_LIBRARY \"$prefix/lib/libcrypto.a\")\nset(OPENSSL_SSL_LIBRARY \"$prefix/lib/libssl.a\")\nset(OPENSSL_LIBRARIES \"$prefix/lib/libssl.a\" \"$prefix/lib/libcrypto.a\" $ssl_sys_libs)\nset(OPENSSL_INCLUDE_DIR \"$prefix/include\")\nset(OPENSSL_VERSION \"1.1.1\")\nadd_library(OpenSSL::Crypto UNKNOWN IMPORTED)\nset_target_properties(OpenSSL::Crypto PROPERTIES IMPORTED_LOCATION \"$prefix/lib/libcrypto.a\" INTERFACE_INCLUDE_DIRECTORIES \"$prefix/include\" INTERFACE_LINK_LIBRARIES $ssl_sys_libs_cmake)\nadd_library(OpenSSL::SSL UNKNOWN IMPORTED)\nset_target_properties(OpenSSL::SSL PROPERTIES IMPORTED_LOCATION \"$prefix/lib/libssl.a\" INTERFACE_INCLUDE_DIRECTORIES \"$prefix/include\" INTERFACE_LINK_LIBRARIES \"OpenSSL::Crypto\")" > "$dir/cmake/Modules/FindOpenSSL.cmake"
 		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF -DWITH_GSSAPI=OFF -DZLIB_LIBRARY="$prefix/lib/libz.a" -DZLIB_INCLUDE_DIR="$prefix/include" -DCMAKE_C_FLAGS="-I$prefix/include"
 		sed -i 's/Requires.private:.*/& libcrypto zlib/' "$prefix/lib/pkgconfig/libssh.pc"
 		return
@@ -424,12 +432,28 @@ build_library() {
 		return
 	fi
 
+	if [ "$name" == "libzvbi" ]; then
+		sed -i 's/^SUBDIRS = .*/SUBDIRS = m4 doc src po/' "$dir/Makefile.am" 2>/dev/null || true
+		export LIBS="-lm"
+		build_autotools "$dir" "$prefix" --disable-shared --enable-static --without-x
+		unset LIBS
+		return
+	fi
+
 	if [ "$name" == "libvvenc" ]; then
 		local extra_vvenc_flags=""
 		if [ "${TARGET_OS:-}" == "windows" ]; then
 			extra_vvenc_flags="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -DVVENC_ENABLE_LTO=OFF"
 		fi
 		build_cmake "$dir" "$prefix" -DBUILD_SHARED_LIBS=OFF $extra_vvenc_flags
+		return
+	fi
+
+	if [ "$name" == "avisynth" ]; then
+		if [ "${TARGET_OS:-}" == "android" ]; then
+			sed -i 's/void\* ptr = aligned_alloc(Alignment, size);/void* ptr = nullptr; posix_memalign(\&ptr, Alignment, size);/g' "$dir/avs_core/filters/exprfilter/exprfilter.cpp" 2>/dev/null || true
+		fi
+		build_cmake "$dir" "$prefix"
 		return
 	fi
 
@@ -538,6 +562,7 @@ compile_linux() {
 	lame
 	libopus
 	libplacebo
+	openssl
 	librist
 	libssh
 	libtheora
@@ -571,7 +596,6 @@ compile_linux() {
 	libsoxr
 
 	libxcb
-	openssl
 	xlib
 	libpulse
 	libdrm
