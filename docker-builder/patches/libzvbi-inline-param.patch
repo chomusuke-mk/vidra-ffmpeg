@@ -1,0 +1,16 @@
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -48,13 +48,6 @@
+ 	decoder.c decoder.h sliced.h \
+ 	exp-gfx.c exp-gfx.h
+ 
+-if HAVE_GCC_LIMITS
+-libzvbiinline_la_CFLAGS = \
+-	--param max-inline-insns-single=50000 \
+-	--param large-function-insns=150000 \
+-	--param inline-unit-growth=30000 \
+-	--param large-function-growth=30000
+-endif
+ 
+ lib_LTLIBRARIES = \
+ 	libzvbi.la \
