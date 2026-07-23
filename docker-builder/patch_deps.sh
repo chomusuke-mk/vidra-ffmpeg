@@ -40,9 +40,16 @@ fi
 
 echo "Descargando dependencias de shaderc"
 if [ -d "$SRC_ROOT/libshaderc" ]; then
-	pushd "$SRC_ROOT/libshaderc"
-	./utils/git-sync-deps
-	popd
+	echo "Saltando git-sync-deps para shaderc para evitar cuelgues de red..."
+	# pushd "$SRC_ROOT/libshaderc"
+	# ./utils/git-sync-deps
+	# popd
+fi
+
+echo "Configurando fast_float para libplacebo"
+if [ -d "$SRC_ROOT/libplacebo" ] && [ -d "$SRC_ROOT/fast_float" ]; then
+	mkdir -p "$SRC_ROOT/libplacebo/3rdparty"
+	mv "$SRC_ROOT/fast_float" "$SRC_ROOT/libplacebo/3rdparty/"
 fi
 
 echo "================ Parches aplicados ==================="

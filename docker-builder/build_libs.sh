@@ -132,7 +132,7 @@ build_library() {
 	if [ "$name" == "openssl" ]; then
 		pushd "$dir" >/dev/null
 		if [ "$TARGET_OS" == "windows" ]; then
-			./Configure mingw64 --prefix="$prefix" --libdir=lib no-shared
+			./Configure mingw64 --prefix="$prefix" --libdir=lib no-shared no-asm
 		else
 			./config --prefix="$prefix" --libdir=lib no-shared -fPIC
 		fi
@@ -221,8 +221,6 @@ build_library() {
 		return
 	fi
 	if [ "$name" == "libshaderc" ]; then
-		build_cmake "$dir" "$prefix"
-		sed -i 's/-lshaderc_shared/-lshaderc_combined/g' "$prefix/lib/pkgconfig/shaderc.pc" || true
 		return
 	fi
 	if [ "$name" == "libsrt" ]; then
@@ -308,7 +306,7 @@ build_library() {
 	fi
 
 	if [ "$name" == "libvmaf" ]; then
-		build_meson "$dir/libvmaf" "$prefix"
+		build_meson "$dir/libvmaf" "$prefix" -Denable_tests=false -Denable_docs=false
 		return
 	fi
 
@@ -393,6 +391,11 @@ build_library() {
 		build_autotools "$dir" "$prefix" --disable-openmpt123
 		# Fix missing C++ stdlib and math for static builds
 		sed -i 's/Libs.private:/Libs.private: -lstdc++ -lm/g' "$prefix/lib/pkgconfig/libopenmpt.pc"
+		return
+	fi
+
+	if [ "$name" == "libtheora" ]; then
+		build_autotools "$dir" "$prefix" --disable-asm --disable-examples
 		return
 	fi
 
@@ -499,6 +502,8 @@ build_library() {
 
 compile_linux() {
 	echo "==================== Compilando librerías - Linux ====================="
+	local -x TARGET_OS="linux"
+	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/linux_x86_64"
 	local -x LINUX_ROOT="$TEMP_DIR/linux_x86_64"
 	rm -rf "$LINUX_ROOT" && mkdir -p "$LINUX_ROOT" && cp -r "$SRC_ROOT/"* "$LINUX_ROOT"
@@ -612,6 +617,8 @@ compile_linux() {
 
 compile_windows() {
 	echo "==================== Compilando librerías - Windows ====================="
+	local -x TARGET_OS="windows"
+	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/windows_x86_64"
 	local -x WINDOWS_ROOT="$TEMP_DIR/windows_x86_64"
 	rm -rf "$WINDOWS_ROOT" && mkdir -p "$WINDOWS_ROOT" && cp -r "$SRC_ROOT/"* "$WINDOWS_ROOT"
@@ -729,6 +736,8 @@ compile_windows() {
 compile_android() {
 	local ABI="$1"
 	echo "==================== Compilando librerías - Android $ABI ====================="
+	local -x TARGET_OS="android"
+	local -x TARGET_ARCH="$ABI"
 	local -x PREFIX="$COMPILATION_DIR/android_$ABI"
 	local -x ANDROID_ROOT="$TEMP_DIR/android_$ABI"
 	rm -rf "$ANDROID_ROOT" && mkdir -p "$ANDROID_ROOT" && cp -r "$SRC_ROOT/"* "$ANDROID_ROOT"

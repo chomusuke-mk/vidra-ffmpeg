@@ -7,7 +7,7 @@ TARGET_ARCH=${2:-"all"}
 
 # shellcheck disable=SC1091
 source /config.sh
-API_LEVEL=24
+API_LEVEL=28
 TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
 echo "=== Preparando el entorno ==="
@@ -45,7 +45,7 @@ build_linux() {
 
 	cd $LINUX_FFMPEG
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libsoxr --enable-openssl --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --enable-libxcb --enable-xlib --enable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --disable-schannel --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --enable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
+	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libsoxr --enable-openssl --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --enable-libxcb --enable-xlib --enable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --disable-schannel --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --enable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
 
 	./configure \
 		--prefix="$LIBS_PREFIX" \
@@ -65,6 +65,8 @@ build_linux() {
 	}
 
 	make -j"$(nproc)"
+
+	strip ffmpeg ffprobe
 
 	mkdir -p /dist/linux-x86_64
 	cp ffmpeg /dist/linux-x86_64/ffmpeg
@@ -104,7 +106,7 @@ EOF
 
 	cd $WINDOWS_FFMPEG
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --disable-vaapi --enable-libvidstab --disable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
+	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --disable-vaapi --enable-libvidstab --disable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
 
 	local optflags="-O1"
 
@@ -132,6 +134,8 @@ EOF
 	}
 
 	make -j"$(nproc)"
+
+	${CROSS_PREFIX}strip ffmpeg.exe ffprobe.exe
 
 	mkdir -p /dist/windows_x86_64
 	cp ffmpeg.exe /dist/windows_x86_64/ffmpeg.exe
@@ -195,10 +199,10 @@ build_android() {
 	cd "$ANDROID_FFMPEG"
 	make distclean >/dev/null 2>&1 || true
 
-	# Parchear archivos .pc de pkg-config generados por CMake que pueden contener dependencias problemáticas
-	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec sed -i 's/-l-pthread//g; s/-lpthread//g; s/-l-l:libunwind.a//g; s/-l:libunwind.a//g; s/libunwind.a//g; s/-lc++ //g; s/-lc++$//g' {} + 2>/dev/null || true
+	# Parchear archivos .pc de pkg-config generados por CMake/Meson/Cargo que pueden contener dependencias de glibc inexistentes en Android (Bionic)
+	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec sed -i 's/-l-pthread//g; s/-lpthread//g; s/-l-l:libunwind.a//g; s/-l:libunwind.a//g; s/libunwind.a//g; s/-lc++ //g; s/-lc++$//g; s/-lutil //g; s/-lutil$//g; s/-lrt //g; s/-lrt$//g' {} + 2>/dev/null || true
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --enable-libsoxr --disable-libxcb --disable-xlib --disable-libpulse --disable-libdrm --disable-schannel --enable-mediacodec --enable-jni"
+	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --enable-gmp --enable-lzma --enable-liblcevc-dec --disable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --disable-ffnvcodec --disable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --enable-libsoxr --disable-libxcb --disable-xlib --disable-libpulse --disable-libdrm --disable-schannel --enable-mediacodec --enable-jni"
 
 	./configure \
 		--prefix="$PREFIX" \
@@ -213,13 +217,14 @@ build_android() {
 		--enable-cross-compile \
 		--pkg-config-flags="--static" \
 		--extra-cflags="-I$PREFIX/include" \
-		--extra-ldflags="-L$PREFIX/lib" \
+		--extra-ldflags="-L$PREFIX/lib -Wl,--allow-multiple-definition" \
 		--extra-libs="-lm -Wl,-Bstatic -lc++_static -lc++abi -lunwind -Wl,-Bdynamic -latomic" \
 		--enable-static \
 		--disable-shared \
 		--enable-gpl \
 		--enable-version3 \
 		--disable-debug \
+		--enable-stripping \
 		--disable-doc \
 		--disable-ffplay \
 		--optflags="$optflags" \
@@ -234,6 +239,9 @@ build_android() {
 	sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
 
 	make -j"$(nproc)"
+
+	# Asegurar que el binario esté completamente desprovisto de símbolos de depuración
+	"${STRIP}" ffmpeg ffprobe || true
 
 	local OUT_DIR="/dist/android-$ABI"
 	mkdir -p "$OUT_DIR"

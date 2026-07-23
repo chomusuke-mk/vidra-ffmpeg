@@ -88,6 +88,7 @@ download_if_missing "libbluray" "https://code.videolan.org/videolan/libbluray/-/
 download_if_missing "libjxl" "https://github.com/libjxl/libjxl/archive/refs/tags/v0.12.0.tar.gz"
 download_if_missing "lame" "https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz"
 download_if_missing "libopus" "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz"
+download_if_missing "fast_float" "https://github.com/fastfloat/fast_float/archive/refs/tags/v6.1.1.tar.gz"
 download_if_missing "libplacebo" "https://github.com/haasn/libplacebo/archive/refs/tags/v7.360.1.tar.gz"
 download_if_missing "librist" "https://code.videolan.org/rist/librist/-/archive/v0.2.17/librist-v0.2.17.tar.gz"
 download_if_missing "libssh" "https://gitlab.com/libssh/libssh-mirror/-/archive/libssh-0.12.0/libssh-mirror-libssh-0.12.0.tar.gz"
