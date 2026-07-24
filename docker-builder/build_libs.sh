@@ -17,11 +17,14 @@ build_cmake() {
 	echo "   -> Building with CMake"
 	mkdir -p "$dir/build"
 	pushd "$dir/build" >/dev/null
-	local toolchain_arg=""
+	local toolchain_args=()
 	if [ -n "${TOOLCHAIN_FILE:-}" ] && [ -f "$TOOLCHAIN_FILE" ]; then
-		toolchain_arg="-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE"
+		toolchain_args+=("-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE")
+		if [ "${TARGET_OS:-}" == "android" ]; then
+			toolchain_args+=("-DANDROID_ABI=$TARGET_ARCH" "-DANDROID_PLATFORM=android-$API_LEVEL")
+		fi
 	fi
-	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix" "$toolchain_arg" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_TESTS=OFF -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
+	cmake .. -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_PREFIX_PATH="$prefix" "${toolchain_args[@]}" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_TESTING=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DENABLE_DOCS=OFF -DENABLE_EXAMPLES=OFF -DENABLE_TESTS=OFF -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF "$@"
 	make -j"$(nproc)"
 	make install
 	popd >/dev/null
@@ -61,9 +64,22 @@ build_autotools() {
 	elif [ -n "${TARGET_HOST:-}" ]; then
 		host_arg="--host=$TARGET_HOST"
 	fi
+
+	if [ "${TARGET_OS:-}" == "android" ]; then
+		# Android's pthread is in libc
+		sed -i 's/as_fn_error.*"Unable to link pthread functions".*/ax_pthread_ok=yes/g' configure || true
+		export PTHREAD_LIBS="-lc"
+		export PTHREAD_CFLAGS=" "
+	fi
+
 	./configure --prefix="$prefix" "$host_arg" --enable-static --disable-shared --with-pic --disable-programs --disable-tools --disable-tests --disable-examples --disable-docs --disable-unit-tests "$@"
 	make -j"$(nproc)"
 	make install
+
+	if [ "${TARGET_OS:-}" == "android" ]; then
+		unset PTHREAD_LIBS
+		unset PTHREAD_CFLAGS
+	fi
 	popd >/dev/null
 }
 
@@ -121,6 +137,8 @@ build_library() {
 		local host_arg=""
 		if [ -n "${HOST:-}" ]; then
 			host_arg="--host=$HOST"
+		elif [ -n "${TARGET_HOST:-}" ]; then
+			host_arg="--host=$TARGET_HOST"
 		fi
 		pushd "$dir" >/dev/null
 		./configure --prefix="$prefix" --enable-static --disable-shared --with-pic $host_arg
@@ -154,6 +172,8 @@ build_library() {
 		local cross_arg=""
 		if [ -n "${CROSS_PREFIX:-}" ]; then
 			cross_arg="--host=${HOST:-x86_64-w64-mingw32} --cross-prefix=${CROSS_PREFIX}"
+		elif [ -n "${TARGET_HOST:-}" ]; then
+			cross_arg="--host=$TARGET_HOST"
 		fi
 		./configure --prefix="$prefix" --enable-pic --disable-shared --disable-asm $cross_arg --disable-cli || true
 		sed -i 's/install: install-lib install-cli/install: install-lib/g' Makefile
@@ -229,6 +249,9 @@ build_library() {
 		return
 	fi
 	if [ "$name" == "libkvazaar" ]; then
+		if [ "${TARGET_OS:-}" == "android" ]; then
+			sed -i 's/-lrt//g' "$dir/configure.ac" "$dir/configure" "$dir/src/Makefile.in" "$dir/src/Makefile.am" || true
+		fi
 		build_autotools "$dir" "$prefix"
 		# Fix missing math and pthread libraries in pkg-config file for static builds
 		sed -i 's/Libs.private:/Libs.private: -lm -lpthread/g' "$prefix/lib/pkgconfig/kvazaar.pc"
@@ -249,6 +272,8 @@ build_library() {
 			local cross_arg=""
 			if [ -n "${CROSS_PREFIX:-}" ]; then
 				cross_arg="--host=${HOST:-x86_64-w64-mingw32} --cross-prefix=${CROSS_PREFIX}"
+			elif [ -n "${TARGET_HOST:-}" ]; then
+				cross_arg="--host=$TARGET_HOST"
 			fi
 			./configure --prefix="$prefix" --enable-static --enable-pic --disable-cli $cross_arg
 			make -j"$(nproc)"
@@ -360,6 +385,17 @@ build_library() {
 				export CXXFLAGS_x86_64_pc_windows_gnu="${CXXFLAGS}"
 				export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="${CC}"
 				unset CC CXX AR RANLIB RC CFLAGS CXXFLAGS LDFLAGS HOST
+			elif [ "${TARGET_OS:-}" == "android" ]; then
+				local RUST_TARGET=""
+				case "$ABI" in
+					arm64-v8a) RUST_TARGET="aarch64-linux-android" ;;
+					armeabi-v7a) RUST_TARGET="armv7-linux-androideabi" ;;
+					x86) RUST_TARGET="i686-linux-android" ;;
+					x86_64) RUST_TARGET="x86_64-linux-android" ;;
+				esac
+				rustup target add $RUST_TARGET || true
+				cargo_opts+=(--target="$RUST_TARGET")
+				export CARGO_TARGET_$(echo "$RUST_TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')_LINKER="${CC}"
 			fi
 			cargo cinstall --release --prefix="$prefix" --libdir="lib" --library-type=staticlib "${cargo_opts[@]}"
 			sed -i 's/-lgcc_s//g; s/-lc //g' "$prefix/lib/pkgconfig/rav1e.pc" || true
@@ -465,6 +501,8 @@ build_library() {
 		local host_arg=""
 		if [ -n "${HOST:-}" ]; then
 			host_arg="--host=$HOST"
+		elif [ -n "${TARGET_HOST:-}" ]; then
+			host_arg="--host=$TARGET_HOST"
 		fi
 		sed -i 's/-mno-cygwin//g' configure || true
 		./configure --prefix="$prefix" --disable-shared $host_arg
@@ -482,6 +520,16 @@ build_library() {
 		sed -i 's/#if defined _MSC_VER/#if defined _WIN32/g' "$dir/src/"ipc_*.cpp "$dir/src/"ipc_*.hpp
 		sed -i 's/#ifdef _MSC_VER/#if defined _WIN32/g' "$dir/src/"ipc_*.cpp "$dir/src/"ipc_*.hpp
 		build_cmake "$dir" "$prefix" -DCMAKE_SYSTEM_VERSION=6.1 -DPOLLER=epoll -DWITH_TLS=OFF -DBUILD_TESTS=OFF -DWITH_DOCS=OFF -DENABLE_DRAFTS=OFF -DBUILD_SHARED=OFF
+		return
+	fi
+	if [ "$name" == "libzvbi" ]; then
+		pushd "$dir" >/dev/null
+		if [ "${TARGET_OS:-}" == "android" ]; then
+			# Android API < 26 does not have nl_langinfo
+			sed -i 's/nl_langinfo *(CODESET)/"UTF-8"/g' src/conv.c || true
+		fi
+		build_autotools "$dir" "$prefix"
+		popd >/dev/null
 		return
 	fi
 
@@ -767,35 +815,98 @@ compile_android() {
 	fi
 	local -x LD="$CC"
 
-	local -x CFLAGS="-fPIE -fPIC -O3"
-	local -x CXXFLAGS="-fPIE -fPIC -O3"
-	local -x LDFLAGS="-fPIE -pie"
+	local -x CFLAGS="-fPIE -fPIC -O3 -I$PREFIX/include"
+	local -x CXXFLAGS="-fPIE -fPIC -O3 -I$PREFIX/include"
+	local -x LDFLAGS="-fPIE -pie -L$PREFIX/lib"
 
 	if [ "$ABI" = "x86" ]; then
-		CFLAGS="-fPIE -fPIC -O1"
-		CXXFLAGS="-fPIE -fPIC -O1"
+		CFLAGS="-fPIE -fPIC -O1 -I$PREFIX/include"
+		CXXFLAGS="-fPIE -fPIC -O1 -I$PREFIX/include"
 	fi
 
 	local TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
 	local MESON_CROSS_FILE="$ANDROID_ROOT/android-${ABI}-meson-cross.txt"
 
-	# Dependencies that must be built first
-	local PRIORITY_LIBS="libudfread dvdread lv2 zix serd sord sratom lilv"
-	for lib in $PRIORITY_LIBS; do
+	local LIBS="
+	libudfread
+	libdvdread
+	lv2
+	zix
+	serd
+	sord
+	sratom
+	lilv
+	libogg
+	iconv
+	zlib
+	libpng
+	libxml2
+	libvmaf
+	expat
+	libfreetype
+	fontconfig
+	libharfbuzz
+	libfribidi
+	libvorbis
+	gmp
+	lzma
+	liblcevc
+	amf
+	libaom
+	libaribb24
+	avisynth
+	fftw
+	chromaprint
+	libdav1d
+	libdavs2
+	libdvdnav
+	frei0r
+	libgme
+	libkvazaar
+	libaribcaption
+	libunibreak
+	libass
+	libbluray
+	libjxl
+	lame
+	libopus
+	libplacebo
+	openssl
+	librist
+	libssh
+	libtheora
+	libvpx
+	libwebp
+	libzmq
+	libvpl
+	openal
+	liboapv
+	opencore-amr
+	libopenh264
+	libopenjpeg
+	libopenmpt
+	librav1e
+	librubberband
+	sdl2
+	libsnappy
+	libsrt
+	libsvtav1
+	libtwolame
+	libuavs3d
+	libvidstab
+	libvvenc
+	libx264
+	libx265
+	libxavs2
+	libxvid
+	libzimg
+	libzvbi
+	libsoxr
+	"
+
+	for lib in $LIBS; do
 		if [ -d "$ANDROID_ROOT/$lib" ]; then
 			build_library "$ANDROID_ROOT/$lib" "$PREFIX"
-		fi
-	done
-
-	# Extra Linux libs to skip
-	local EXTRA_LINUX_LIBS="libsndfile openssl libxcb xlib libpulse libdrm"
-
-	for lib_dir in "$ANDROID_ROOT"/*; do
-		if [ -d "$lib_dir" ]; then
-			local name=$(basename "$lib_dir")
-			if [[ ! " $PRIORITY_LIBS " =~ " $name " ]] && [[ ! " $EXTRA_LINUX_LIBS " =~ " $name " ]]; then
-				build_library "$lib_dir" "$PREFIX"
-			fi
 		fi
 	done
 
