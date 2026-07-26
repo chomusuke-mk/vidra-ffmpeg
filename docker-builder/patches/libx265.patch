@@ -1,0 +1,30 @@
+# ALL:ALL - Se filtran librerias estandar implicitas (gcc_s, c) en CMakeLists.txt para evitar dependencias inexistentes en toolchains Bionic/Android en x265.pc.
+--- libx265/source/CMakeLists.txt
++++ libx265/source/CMakeLists.txt
+@@ -1127,7 +1127,12 @@
+         list(REMOVE_ITEM PLIBLIST "-lc" "-lpthread" "-lmingwex" "-lmingwthrd"
+             "-lmingw32" "-lmoldname" "-lmsvcrt" "-ladvapi32" "-lshell32"
+             "-luser32" "-lkernel32")
+-        string(REPLACE ";" " " PRIVATE_LIBS "${PLIBLIST}")
++        set(PRIVATE_LIBS "")
++        foreach(LIB ${PLIBLIST})
++            if(NOT "${LIB}" MATCHES "^-l(gcc_s|c)$")
++                set(PRIVATE_LIBS "${PRIVATE_LIBS} ${LIB}")
++            endif()
++        endforeach()
+     else()
+         set(PRIVATE_LIBS "")
+     endif(PLIBLIST)
+# ANDROID:ARM - Se agrega la validacion de CMAKE_C_COMPILER_TARGET para incluir el flag --target en ARM_ARGS para que funcione la compilacion cruzada en Clang/NDK.
+--- libx265/source/CMakeLists.txt
++++ libx265/source/CMakeLists.txt
+@@ -541,6 +541,9 @@
+     if(ENABLE_PIC)
+         list(APPEND ARM_ARGS -DPIC -fPIC)
+     endif()
++    if(CMAKE_C_COMPILER_TARGET)
++        list(APPEND ARM_ARGS --target=${CMAKE_C_COMPILER_TARGET})
++    endif()
+     add_definitions(${ARM_ARGS})
+     if(FPROFILE_GENERATE)
+         if(INTEL_CXX)

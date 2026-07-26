@@ -1,0 +1,51 @@
+# ALL:ALL - Se agrega un FindOpenSSL.cmake estatico a libssh para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ libssh/cmake/Modules/FindOpenSSL.cmake
+@@ -0,0 +1,22 @@
++set(OPENSSL_FOUND TRUE)
++set(OPENSSL_CRYPTO_LIBRARY "${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
++set(OPENSSL_SSL_LIBRARY "${CMAKE_INSTALL_PREFIX}/lib/libssl.a")
++set(OPENSSL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/include")
++set(OPENSSL_VERSION "1.1.1")
++
++if(WIN32)
++    set(OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.a" "${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a" "-lcrypt32" "-lws2_32")
++    set(SSL_SYS_LIBS_CMAKE "crypt32;ws2_32")
++elseif(UNIX AND NOT ANDROID)
++    set(OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.a" "${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a" "-ldl" "-pthread")
++    set(SSL_SYS_LIBS_CMAKE "dl;pthread")
++else()
++    set(OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.a" "${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
++    set(SSL_SYS_LIBS_CMAKE "")
++endif()
++
++add_library(OpenSSL::Crypto UNKNOWN IMPORTED)
++set_target_properties(OpenSSL::Crypto PROPERTIES IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a" INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include")
++if(SSL_SYS_LIBS_CMAKE)
++    set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_LINK_LIBRARIES "${SSL_SYS_LIBS_CMAKE}")
++endif()
++
++add_library(OpenSSL::SSL UNKNOWN IMPORTED)
++set_target_properties(OpenSSL::SSL PROPERTIES IMPORTED_LOCATION "${CMAKE_INSTALL_PREFIX}/lib/libssl.a" INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/include" INTERFACE_LINK_LIBRARIES "OpenSSL::Crypto")
+# ALL:ALL - Se agrega dependencias de libcrypto y zlib a Requires.private en libssh.pc.cmake para que funcione el enlace estatico cruzado sin librerias faltantes.
+--- libssh/libssh.pc.cmake
++++ libssh/libssh.pc.cmake
+@@ -8,4 +8,4 @@
+ Version: @PROJECT_VERSION@
+ Libs: -L${libdir} -lssh
+ Cflags: -I${includedir}
+-Requires.private: @LIBSSH_PC_REQUIRES_PRIVATE@
++Requires.private: libcrypto zlib @LIBSSH_PC_REQUIRES_PRIVATE@
+# WINDOWS:ALL - Se agrega la definicion del macro S_IWRITE como 0200 si no existe para que funcione la compilacion en entornos Windows/MinGW donde S_IWRITE no esta definido en sys/stat.h.
+--- libssh/src/misc.c
++++ libssh/src/misc.c
+@@ -43,6 +43,9 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <sys/stat.h>
++#ifndef S_IWRITE
++#define S_IWRITE 0200
++#endif
+ #include <sys/types.h>
+ #include <ctype.h>
+ #include <time.h>

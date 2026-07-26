@@ -1,0 +1,11 @@
+# ALL:ALL - Se agrega -lstdc++ y -lm a Libs.private en libopenmpt.pc.in para que funcione el enlace estatico cruzado sin libreria estandar faltante.
+--- libopenmpt/libopenmpt/libopenmpt.pc.in
++++ libopenmpt/libopenmpt/libopenmpt.pc.in
+@@ -10,6 +10,6 @@
+ Version: @VERSION@
+ Requires.private: @LIBOPENMPT_REQUIRES_PRIVATE@
+ Libs: -L${libdir} -lopenmpt
+-Libs.private: @LIBOPENMPT_LIBS_PRIVATE@
++Libs.private: -lstdc++ -lm @LIBOPENMPT_LIBS_PRIVATE@
+ Cflags: -I${includedir}
+ 

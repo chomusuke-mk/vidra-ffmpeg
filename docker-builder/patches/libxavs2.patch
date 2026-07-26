@@ -1,0 +1,36 @@
+# ANDROID:ALL - Se agrega la definicion de macros dummy pthread_setaffinity_np/pthread_getaffinity_np bajo __ANDROID__ para que funcione la compilacion en Bionic NDK sin simbolos de afinidad faltantes.
+--- libxavs2/source/common/threadpool.c
++++ libxavs2/source/common/threadpool.c
+@@ -38,6 +38,11 @@
+ #include "threadpool.h"
+ #include "cpu.h"
+ 
++#ifdef __ANDROID__
++#define pthread_setaffinity_np(a,b,c) (0)
++#define pthread_getaffinity_np(a,b,c) (0)
++#endif
++
+ 
+ /**
+  * ===========================================================================
+# WINDOWS:ALL - Se comenta sched_getaffinity y se agrega macros dummy en libxavs2/source/common/cpu.c para que funcione la compilacion en Windows/MinGW.
+--- libxavs2/source/common/cpu.c
++++ libxavs2/source/common/cpu.c
+@@ -1,3 +1,8 @@
++#ifdef _WIN32
++typedef int cpu_set_t;
++#define sched_getaffinity(...) 0
++#define CPU_COUNT(x) 1
++#endif
+ /*****************************************************************************
+  * Copyright (C) 2013-2017 MulticoreWare, Inc
+  * Copyright (C) 2018~ VCL, NELVT, Peking University
+@@ -355,7 +360,7 @@
+ #if SYS_LINUX && !(defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7__))
+ /* ---------------------------------------------------------------------------
+  */
+-int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
++// int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
+ #endif
+ 
+ /* ---------------------------------------------------------------------------

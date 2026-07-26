@@ -1,0 +1,22 @@
+# ANDROID:ALL - Se elimina -lrt para Android porque no existe y se agrega -lm -lpthread a pc.in para que funcione el enlace estatico cruzado.
+--- libkvazaar/configure.ac
++++ libkvazaar/configure.ac
+@@ -173,7 +173,7 @@
+         [linux*|*kfreebsd*], [
+          ASFLAGS="$ASFLAGS -f elf$BITS"
+          LDFLAGS="$LDFLAGS -Wl,-z,noexecstack"
+-         LIBS="$LIBS -lrt"
++         LIBS="$LIBS "
+         ], [
+          ASFLAGS="$ASFLAGS -f elf$BITS"
+          LDFLAGS="$LDFLAGS -Wl,-z,noexecstack"
+--- libkvazaar/src/kvazaar.pc.in
++++ libkvazaar/src/kvazaar.pc.in
+@@ -7,5 +7,5 @@
+ Description: Open-source HEVC encoder
+ Version: @VERSION@
+ Libs: -L${libdir} -lkvazaar
+-Libs.private: @LIBS@
++Libs.private: -lm -lpthread @LIBS@
+ Cflags: -I${incdir}
+\ No hay ningún carácter de nueva línea al final del archivo

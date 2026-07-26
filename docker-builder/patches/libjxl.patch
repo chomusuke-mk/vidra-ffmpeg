@@ -1,0 +1,23 @@
+# ALL:ALL - Se agrega -lstdc++ a Libs en libjxl para que funcione el enlace estatico cruzado sin libreria de c++ faltante.
+--- libjxl/lib/jxl/libjxl_cms.pc.in
++++ libjxl/lib/jxl/libjxl_cms.pc.in
+@@ -7,7 +7,7 @@
+ Description: CMS support library for libjxl
+ Version: @JPEGXL_LIBRARY_VERSION@
+ @JPEGXL_REQUIRES_TYPE@: @JPEGXL_CMS_LIBRARY_REQUIRES@
+-Libs: -L${libdir} -ljxl_cms @JPEGXL_CMS_PUBLIC_LIBS@
++Libs: -L${libdir} -ljxl_cms -lstdc++ @JPEGXL_CMS_PUBLIC_LIBS@
+ Libs.private: @JPEGXL_CMS_PRIVATE_LIBS@
+ Cflags: -I${includedir}
+ Cflags.private: -DJXL_CMS_STATIC_DEFINE
+--- libjxl/lib/threads/libjxl_threads.pc.in
++++ libjxl/lib/threads/libjxl_threads.pc.in
+@@ -7,7 +7,7 @@
+ Description: JPEG XL multi-thread runner using std::threads.
+ Version: @JPEGXL_LIBRARY_VERSION@
+ @JPEGXL_REQUIRES_TYPE@: @JPEGXL_THREADS_LIBRARY_REQUIRES@
+-Libs: -L${libdir} -ljxl_threads
++Libs: -L${libdir} -ljxl_threads -lstdc++
+ Libs.private: -lm
+ Cflags: -I${includedir}
+ Cflags.private: -DJXL_THREADS_STATIC_DEFINE

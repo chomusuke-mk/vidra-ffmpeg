@@ -1,0 +1,188 @@
+# ALL:ALL - Se cambia shared_library por library en libpulse para permitir compilarlo estaticamente.
+--- libpulse/src/meson.build
++++ libpulse/src/meson.build
+@@ -198,7 +198,7 @@
+   libpulse_dep = dependency('libpulse', required : true)
+   libpulse_simple_dep = dependency('libpulse-simple', required : true)
+ else
+-  libpulsecommon = shared_library('pulsecommon-' + pa_version_major_minor,
++  libpulsecommon = library('pulsecommon-' + pa_version_major_minor,
+     libpulsecommon_sources,
+     libpulsecommon_headers,
+     include_directories : [configinc, topinc],
+--- libpulse/src/modules/alsa/meson.build
++++ libpulse/src/modules/alsa/meson.build
+@@ -26,7 +26,7 @@
+   libalsa_util_headers += [ '../udev-util.h' ]
+ endif
+ 
+-libalsa_util = shared_library('alsa-util',
++libalsa_util = library('alsa-util',
+   libalsa_util_sources,
+   libalsa_util_headers,
+   c_args : [pa_c_args, server_c_args],
+--- libpulse/src/modules/bluetooth/meson.build
++++ libpulse/src/modules/bluetooth/meson.build
+@@ -31,7 +31,7 @@
+   libbluez5_util_sources += [ 'a2dp-codec-aptx-gst.c' ]
+ endif
+ 
+-libbluez5_util = shared_library('bluez5-util',
++libbluez5_util = library('bluez5-util',
+   libbluez5_util_sources,
+   libbluez5_util_headers,
+   c_args : [pa_c_args, server_c_args],
+--- libpulse/src/modules/echo-cancel/meson.build
++++ libpulse/src/modules/echo-cancel/meson.build
+@@ -19,7 +19,7 @@
+   ignore_unresolved_symbols_link_args = ['-Wl,--unresolved-symbols=ignore-in-object-files']
+ endif
+ 
+-libwebrtc_util = shared_library('webrtc-util',
++libwebrtc_util = library('webrtc-util',
+   libwebrtc_util_sources,
+   cpp_args : [pa_c_args, server_c_args],
+   include_directories : [configinc, topinc],
+--- libpulse/src/modules/oss/meson.build
++++ libpulse/src/modules/oss/meson.build
+@@ -6,7 +6,7 @@
+   'oss-util.h'
+ ]
+ 
+-liboss_util = shared_library('oss-util',
++liboss_util = library('oss-util',
+   liboss_util_sources,
+   liboss_util_headers,
+   c_args : [pa_c_args, server_c_args],
+--- libpulse/src/modules/raop/meson.build
++++ libpulse/src/modules/raop/meson.build
+@@ -17,7 +17,7 @@
+ # FIXME: meson doesn't support multiple RPATH arguments currently
+ rpath_dirs = join_paths(privlibdir) + ':' + join_paths(modlibexecdir)
+ 
+-libraop = shared_library('raop',
++libraop = library('raop',
+   libraop_sources,
+   libraop_headers,
+   c_args : [pa_c_args, server_c_args],
+--- libpulse/src/modules/rtp/meson.build
++++ libpulse/src/modules/rtp/meson.build
+@@ -20,7 +20,7 @@
+   librtp_sources += 'rtp-native.c'
+ endif
+ 
+-librtp = shared_library('rtp',
++librtp = library('rtp',
+   librtp_sources,
+   librtp_headers,
+   c_args : [pa_c_args, server_c_args],
+--- libpulse/src/pulse/meson.build
++++ libpulse/src/pulse/meson.build
+@@ -80,7 +80,7 @@
+   versioning_link_args = []
+ endif
+ 
+-libpulse = shared_library('pulse',
++libpulse = library('pulse',
+   libpulse_sources,
+   libpulse_headers,
+   version : libpulse_version,
+@@ -101,7 +101,7 @@
+   subdir : 'pulse'
+ )
+ 
+-libpulse_simple = shared_library('pulse-simple',
++libpulse_simple = library('pulse-simple',
+   'simple.c',
+   'simple.h',
+   version : libpulse_simple_version,
+@@ -116,7 +116,7 @@
+ libpulse_simple_dep = declare_dependency(link_with: libpulse_simple)
+ 
+ if glib_dep.found()
+-  libpulse_mainloop_glib = shared_library('pulse-mainloop-glib',
++  libpulse_mainloop_glib = library('pulse-mainloop-glib',
+     'glib-mainloop.c',
+     'glib-mainloop.h',
+     version : libpulse_mainloop_glib_version,
+--- libpulse/src/pulsecore/meson.build
++++ libpulse/src/pulsecore/meson.build
+@@ -214,7 +214,7 @@
+   ]
+ endif
+ 
+-libpulsecore = shared_library('pulsecore-' + pa_version_major_minor,
++libpulsecore = library('pulsecore-' + pa_version_major_minor,
+   libpulsecore_sources, libpulsecore_headers,
+   orc_sources, orc_headers,
+   include_directories : [configinc, topinc],
+@@ -232,7 +232,7 @@
+ # Internal libraries for modules
+ # TODO: understand 'c_args' and 'dependencies' better, maybe we can remove some
+ 
+-libavahi_wrap = shared_library('avahi-wrap',
++libavahi_wrap = library('avahi-wrap',
+   'avahi-wrap.c',
+   'avahi-wrap.h',
+   c_args : [pa_c_args, server_c_args, database_c_args],
+@@ -245,7 +245,7 @@
+   install_dir : modlibexecdir,
+ )
+ 
+-libcli = shared_library('cli',
++libcli = library('cli',
+   'cli.c',
+   'cli.h',
+   c_args : [pa_c_args, server_c_args, database_c_args],
+@@ -262,7 +262,7 @@
+ # FIXME: meson doesn't support multiple RPATH arguments currently
+ rpath_dirs = join_paths(privlibdir) + ':' + join_paths(modlibexecdir)
+ 
+-libprotocol_cli = shared_library('protocol-cli',
++libprotocol_cli = library('protocol-cli',
+   'protocol-cli.c',
+   'protocol-cli.h',
+   c_args : [pa_c_args, server_c_args, database_c_args],
+@@ -274,7 +274,7 @@
+   install_dir : modlibexecdir,
+ )
+ 
+-libprotocol_http = shared_library('protocol-http',
++libprotocol_http = library('protocol-http',
+   ['protocol-http.c', 'mime-type.c'],
+   ['protocol-http.h', 'mime-type.h'],
+   c_args : [pa_c_args, server_c_args, database_c_args],
+@@ -286,7 +286,7 @@
+   install_dir : modlibexecdir,
+ )
+ 
+-libprotocol_native = shared_library('protocol-native',
++libprotocol_native = library('protocol-native',
+   'protocol-native.c',
+   ['protocol-native.h', 'native-common.h'],
+   c_args : [pa_c_args, server_c_args, database_c_args],
+@@ -298,7 +298,7 @@
+   install_dir : modlibexecdir,
+ )
+ 
+-libprotocol_simple = shared_library('protocol-simple',
++libprotocol_simple = library('protocol-simple',
+   'protocol-simple.c',
+   'protocol-simple.h',
+   c_args : [pa_c_args, server_c_args, database_c_args],
+--- libpulse/src/utils/meson.build
++++ libpulse/src/utils/meson.build
+@@ -100,7 +100,7 @@
+       'padsp.c',
+     ]
+ 
+-    libpulsedsp = shared_library('pulsedsp',
++    libpulsedsp = library('pulsedsp',
+       libpulsecommon_sources,
+       install: true,
+       install_dir : padsplibdir,
+# ALL:ALL - Se agrega version a la libreria de pulseaudio para que funcione el enlace estatico cruzado sin libreria faltante.
+--- /dev/null
++++ libpulse/.tarball-version
+@@ -0,0 +1,1 @@
++17.0

@@ -1,0 +1,10 @@
+# ALL:ALL - Se agrega -lstdc++ y -lm a Libs.private en vpl.pc.in para que funcione el enlace estatico cruzado sin librerias faltantes.
+--- libvpl/libvpl/pkgconfig/vpl.pc.in
++++ libvpl/libvpl/pkgconfig/vpl.pc.in
+@@ -8,5 +8,5 @@
+ URL: https://github.com/intel/libvpl
+ 
+ Libs: -L${libdir} -l@OUTPUT_NAME@ @VPL_PKGCONFIG_DEPENDENT_LIBS@
+-Libs.private: @VPL_PKGCONFIG_PRIVATE_LIBS@
++Libs.private: -lstdc++ -lm @VPL_PKGCONFIG_PRIVATE_LIBS@
+ Cflags: -I${includedir} -I${includedir}/vpl

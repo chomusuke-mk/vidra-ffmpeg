@@ -1,0 +1,37 @@
+# WINDOWS:ALL - Se arregla la validacion en libzmq para compilar con MinGW incluyendo cabeceras de windows para AF_UNIX.
+--- libzmq/src/ipc_address.hpp
++++ libzmq/src/ipc_address.hpp
+@@ -7,7 +7,8 @@
+ 
+ #include <string>
+ 
+-#if defined _MSC_VER
++#if defined _WIN32
++#include <winsock2.h>
+ #include <afunix.h>
+ #else
+ #include <sys/socket.h>
+--- libzmq/src/ipc_listener.cpp
++++ libzmq/src/ipc_listener.cpp
+@@ -17,7 +17,8 @@
+ #include "socket_base.hpp"
+ #include "address.hpp"
+ 
+-#ifdef _MSC_VER
++#ifdef _WIN32
++#include <winsock2.h>
+ #ifdef ZMQ_IOTHREAD_POLLER_USE_SELECT
+ #error On Windows, IPC does not work with POLLER=select, use POLLER=epoll instead, or disable IPC transport
+ #endif
+--- libzmq/src/ipc_connecter.cpp
++++ libzmq/src/ipc_connecter.cpp
+@@ -16,7 +16,8 @@
+ #include "ipc_address.hpp"
+ #include "session_base.hpp"
+ 
+-#ifdef _MSC_VER
++#ifdef _WIN32
++#include <winsock2.h>
+ #include <afunix.h>
+ #else
+ #include <unistd.h>

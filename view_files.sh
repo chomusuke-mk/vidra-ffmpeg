@@ -1,10 +1,28 @@
 #!/bin/bash
+set -euo pipefail
 
-mkdir -p ./temp/downloads ./temp/source
+DOWNLOADS_DIR=./temp/downloads
+SOURCE_DIR=./temp/source
+PATCHED_DIR=./temp/patched
+PATCHES_DIR=./docker-builder/patches
 
-./docker-builder/download_deps.sh ./temp/downloads
-./docker-builder/extract_deps.sh ./temp/downloads ./temp/source
-./docker-builder/patch_deps.sh ./docker-builder/patches ./temp/source
+for patch in "$PATCHES_DIR"/*.patch; do
+	# Require comment in first line
+	first_line=$(head -n 1 "$patch")
+	if [[ ! "$first_line" =~ ^#\ .*\ -\ .* ]]; then
+		echo "Error: El parche $(basename "$patch") no tiene un comentario válido (TARGET:ARCH - ...) en la primera línea."
+		exit 1
+	fi
+done
 
-echo "========== ARCHIVOS VISIBLES EN ./temp/source =========="
-ls -l ./temp/source
+mkdir -p $DOWNLOADS_DIR $SOURCE_DIR
+
+./docker-builder/download_deps.sh $DOWNLOADS_DIR
+./docker-builder/extract_deps.sh $DOWNLOADS_DIR $SOURCE_DIR
+rm -rf $PATCHED_DIR && mkdir -p $PATCHED_DIR
+cp -r $SOURCE_DIR/* $PATCHED_DIR
+./docker-builder/patch_deps.sh $PATCHES_DIR $PATCHED_DIR
+
+echo "================="
+echo "Archivos originales en $SOURCE_DIR"
+echo "Archivos parcheados en $PATCHED_DIR"

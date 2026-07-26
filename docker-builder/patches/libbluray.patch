@@ -1,0 +1,129 @@
+# ALL:ALL - Se reemplaza el prefijo de inicializacion y apertura de archivos en libbluray para evitar conflictos de simbolos con otras librerias.
+--- libbluray/src/file/dir_posix.c
++++ libbluray/src/file/dir_posix.c
+@@ -115,7 +115,7 @@
+ 
+ BD_DIR_H* (*dir_open)(const char* dirname) = _dir_open_posix;
+ 
+-BD_DIR_OPEN dir_open_default(void)
++BD_DIR_OPEN bluray_dir_open_default(void)
+ {
+     return _dir_open_posix;
+ }
+--- libbluray/src/file/dir_win32.c
++++ libbluray/src/file/dir_win32.c
+@@ -130,7 +130,7 @@
+ 
+ BD_DIR_H* (*dir_open)(const char* dirname) = _dir_open_win32;
+ 
+-BD_DIR_OPEN dir_open_default(void)
++BD_DIR_OPEN bluray_dir_open_default(void)
+ {
+     return _dir_open_win32;
+ }
+--- libbluray/src/file/file.h
++++ libbluray/src/file/file.h
+@@ -67,7 +67,7 @@
+ 
+ BD_PRIVATE extern BD_FILE_H *(*file_open)(const char* filename, const char *mode);
+ 
+-BD_PRIVATE BD_FILE_OPEN file_open_default(void);
++BD_PRIVATE BD_FILE_OPEN bluray_file_open_default(void);
+ 
+ 
+ /*
+@@ -79,7 +79,7 @@
+ 
+ BD_PRIVATE extern BD_DIR_H *(*dir_open)(const char* dirname);
+ 
+-BD_PRIVATE BD_DIR_OPEN dir_open_default(void);
++BD_PRIVATE BD_DIR_OPEN bluray_dir_open_default(void);
+ 
+ /*
+  * local filesystem
+--- libbluray/src/file/file_posix.c
++++ libbluray/src/file/file_posix.c
+@@ -182,7 +182,7 @@
+ 
+ BD_FILE_H* (*file_open)(const char* filename, const char *mode) = _file_open;
+ 
+-BD_FILE_OPEN file_open_default(void)
++BD_FILE_OPEN bluray_file_open_default(void)
+ {
+     return _file_open;
+ }
+--- libbluray/src/file/file_win32.c
++++ libbluray/src/file/file_win32.c
+@@ -143,7 +143,7 @@
+ 
+ BD_FILE_H* (*file_open)(const char* filename, const char *mode) = _file_open;
+ 
+-BD_FILE_OPEN file_open_default(void)
++BD_FILE_OPEN bluray_file_open_default(void)
+ {
+     return _file_open;
+ }
+--- libbluray/src/libbluray/disc/aacs.c
++++ libbluray/src/libbluray/disc/aacs.c
+@@ -149,7 +149,7 @@
+ 
+     BD_DEBUG(DBG_BLURAY, "Loaded libaacs (%p)\n", p->h_libaacs);
+ 
+-    if (file_open != file_open_default()) {
++    if (file_open != bluray_file_open_default()) {
+         BD_DEBUG(DBG_BLURAY, "Registering libaacs filesystem handler %p (%p)\n", (void *)(intptr_t)file_open, p->h_libaacs);
+         DL_CALL(p->h_libaacs, aacs_register_file, file_open);
+     }
+--- libbluray/src/libbluray/disc/dec.c
++++ libbluray/src/libbluray/disc/dec.c
+@@ -284,7 +284,7 @@
+  *
+  */
+ 
+-BD_DEC *dec_init(struct dec_dev *dev, BD_ENC_INFO *enc_info,
++BD_DEC *bluray_dec_init(struct dec_dev *dev, BD_ENC_INFO *enc_info,
+                  const char *keyfile_path,
+                  void *regs, void *psr_read, void *psr_write)
+ {
+--- libbluray/src/libbluray/disc/dec.h
++++ libbluray/src/libbluray/disc/dec.h
+@@ -45,7 +45,7 @@
+ 
+ typedef struct bd_dec BD_DEC;
+ 
+-BD_PRIVATE BD_DEC *dec_init(struct dec_dev *dev,
++BD_PRIVATE BD_DEC *bluray_dec_init(struct dec_dev *dev,
+                             struct bd_enc_info *enc_info,
+                             const char *keyfile_path,
+                             void *regs, void *psr_read, void *psr_write);
+--- libbluray/src/libbluray/disc/disc.c
++++ libbluray/src/libbluray/disc/disc.c
+@@ -177,7 +177,7 @@
+     if (p->overlay_root) {
+         char *abs_path = str_printf("%s%s", p->disc_root, dir);
+         if (abs_path) {
+-            dp = dir_open_default()(abs_path);
++            dp = bluray_dir_open_default()(abs_path);
+             X_FREE(abs_path);
+         }
+     }
+@@ -348,7 +348,7 @@
+     }
+ 
+     struct dec_dev dev = { p->fs_handle, p->pf_file_open_bdrom, p, (file_openFp)disc_open_path, p->disc_root, device_path };
+-    p->dec = dec_init(&dev, enc_info, keyfile_path, regs, psr_read, psr_write);
++    p->dec = bluray_dec_init(&dev, enc_info, keyfile_path, regs, psr_read, psr_write);
+ 
+     return p;
+ }
+--- libbluray/src/libbluray/disc/udf_fs.c
++++ libbluray/src/libbluray/disc/udf_fs.c
+@@ -269,7 +269,7 @@
+     } else {
+ 
+         /* app handles file I/O ? */
+-        if (result < 0 && file_open != file_open_default()) {
++        if (result < 0 && file_open != bluray_file_open_default()) {
+             struct udfread_block_input *bi = _block_input(img_path);
+             if (bi) {
+                 result = udfread_open_input(udf, bi);

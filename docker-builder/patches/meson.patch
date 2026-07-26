@@ -1,0 +1,81 @@
+# android:arm64-v8a - Se reemplaza configuracion meson para compilacion cruzada con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ android-arm64-v8a-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'aarch64'
++cpu = 'aarch64'
++endian = 'little'
+# android:armeabi-v7a - Se reemplaza configuracion meson para compilacion cruzada con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ android-armeabi-v7a-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi28-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi28-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'arm'
++cpu = 'armv7'
++endian = 'little'
+# android:x86_64 - Se reemplaza configuracion meson para compilacion cruzada con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ android-x86_64-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android28-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'x86_64'
++cpu = 'x86_64'
++endian = 'little'
+# android:x86 - Se reemplaza configuracion meson para compilacion cruzada con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ android-x86-meson-cross.txt
+@@ -0,0 +1,12 @@
++[binaries]
++c = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android28-clang'
++cpp = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android28-clang++'
++ar = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar'
++strip = '/opt/android-ndk-linux/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'android'
++cpu_family = 'x86'
++cpu = 'i686'
++endian = 'little'
+# windows:all - Se reemplaza configuracion meson para compilacion cruzada con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ windows-meson-cross.txt
+@@ -0,0 +1,13 @@
++[binaries]
++c = 'x86_64-w64-mingw32-gcc'
++cpp = 'x86_64-w64-mingw32-g++'
++ar = 'x86_64-w64-mingw32-ar'
++strip = 'x86_64-w64-mingw32-strip'
++windres = 'x86_64-w64-mingw32-windres'
++pkgconfig = 'pkg-config'
++
++[host_machine]
++system = 'windows'
++cpu_family = 'x86_64'
++cpu = 'x86_64'
++endian = 'little'

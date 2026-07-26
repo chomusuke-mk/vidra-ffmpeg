@@ -1,0 +1,11 @@
+# ALL:ALL - Se agrega -lstdc++ a Libs en openh264.pc.in para que funcione el enlace estatico cruzado sin libreria estandar faltante.
+--- libopenh264/openh264.pc.in
++++ libopenh264/openh264.pc.in
+@@ -5,6 +5,6 @@
+ Name: OpenH264
+ Description: OpenH264 is a codec library which supports H.264 encoding and decoding. It is suitable for use in real time applications such as WebRTC.
+ Version: @VERSION@
+-Libs: -L${libdir} -lopenh264 @LIBS@
++Libs: -L${libdir} -lopenh264 @LIBS@ -lstdc++
+ Libs.private: @LIBS_PRIVATE@
+ Cflags: -I${includedir}

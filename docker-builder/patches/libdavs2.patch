@@ -1,0 +1,21 @@
+# WINDOWS:ALL - Se comenta sched_getaffinity y se agrega macros dummy en libdavs2/source/common/cpu.cc para que funcione la compilacion en Windows/MinGW.
+--- libdavs2/source/common/cpu.cc
++++ libdavs2/source/common/cpu.cc
+@@ -1,3 +1,8 @@
++#ifdef _WIN32
++typedef int cpu_set_t;
++#define sched_getaffinity(...) 0
++#define CPU_COUNT(x) 1
++#endif
+ /*
+  * cpu.cc
+  *
+@@ -381,7 +386,7 @@
+ #if SYS_LINUX && !(defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7__))
+ /* ---------------------------------------------------------------------------
+  */
+-int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
++// int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
+ #endif
+ 
+ /* ---------------------------------------------------------------------------

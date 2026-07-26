@@ -1,0 +1,5 @@
+# all:all - Archivo .pc para copiar a directorio final
+--- /dev/null
++++ chromaprint/libchromaprint.pc
+@@ -0,0 +1,1 @@
++Libs.private: -lstdc++ -lm -lfftw3

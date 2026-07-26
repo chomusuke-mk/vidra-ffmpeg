@@ -1,3 +1,4 @@
+# windows:all - Se agrega compatibilidad de simbolos/librerias con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
 --- /dev/null
 +++ windows-msvcrt_compat.c
 @@ -0,0 +1,32 @@

@@ -1,0 +1,13 @@
+# windows:all - Se agrega un script de pkg-config para windows para que funcione la compilacion sin sed y cruce correctamente.
+--- /dev/null
++++ windows-pkg-config.sh
+@@ -0,0 +1,9 @@
++#!/usr/bin/env bash
++out=$(/usr/bin/pkg-config "$@")
++status=$?
++if [ "$status" -ne 0 ]; then
++    exit "$status"
++fi
++out="${out//-lgcc_s/}"
++out=$(echo "$out" | tr -s " " | xargs)
++printf '%s\n' "$out"

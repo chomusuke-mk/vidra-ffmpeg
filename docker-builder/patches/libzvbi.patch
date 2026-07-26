@@ -1,0 +1,133 @@
+# ANDROID:ALL - Se reemplaza la condicion #ifdef HAVE_LANGINFO_H por #if defined(HAVE_LANGINFO_H) && !defined(__ANDROID__) en conv.c para que funcione la definicion de encodings en Android Bionic sin langinfo.h.
+# ANDROID:ALL - Se agrega la definicion del macro dummy pthread_testcancel() bajo __ANDROID__ en los modulos de E/S y cliente proxy de libzvbi para que funcione la compilacion en Android Bionic que carece de pthread_testcancel.
+--- libzvbi/src/conv.c
++++ libzvbi/src/conv.c
+@@ -26,7 +26,7 @@
+ #endif
+ 
+ #include <errno.h>
+-#ifdef HAVE_LANGINFO_H
++#if defined(HAVE_LANGINFO_H) && !defined(__ANDROID__)
+ #include <langinfo.h>
+ #endif
+ #ifdef _WIN32
+@@ -1253,7 +1253,7 @@
+ 
+ 	dst_format = bind_textdomain_codeset (vbi_intl_domainname, NULL);
+ 
+-#ifdef HAVE_LANGINFO_H
++#if defined(HAVE_LANGINFO_H) && !defined(__ANDROID__)
+ 	if (NULL == dst_format)
+ 		dst_format = nl_langinfo (CODESET);
+ #endif
+--- libzvbi/src/proxy-client.c
++++ libzvbi/src/proxy-client.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- VBI proxy client
+  *
+--- libzvbi/src/io-bktr.c
++++ libzvbi/src/io-bktr.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- FreeBSD/OpenBSD bktr driver interface
+  *
+--- libzvbi/src/io-dvb.c
++++ libzvbi/src/io-dvb.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- Linux DVB driver interface
+  *
+--- libzvbi/src/io-sim.c
++++ libzvbi/src/io-sim.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- VBI device simulation
+  *
+--- libzvbi/src/io-v4l.c
++++ libzvbi/src/io-v4l.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- Video For Linux driver interface
+  *
+--- libzvbi/src/io-v4l2.c
++++ libzvbi/src/io-v4l2.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- Video For Linux Two 0.20 driver interface
+  *
+--- libzvbi/src/io-v4l2k.c
++++ libzvbi/src/io-v4l2k.c
+@@ -1,3 +1,7 @@
++#ifdef __ANDROID__
++#define pthread_testcancel()
++#endif
++
+ /*
+  *  libzvbi -- Video For Linux Two (version 2002-10 and later)
+  *             driver interface
+# ALL:ALL - Se elimina la referencia a parametros de optimizacion gcc en libzvbiinline_la_CFLAGS con flags obsoletos para que funcione la compilacion en toolchains modernos.
+--- libzvbi/src/Makefile.am
++++ libzvbi/src/Makefile.am
+@@ -47,13 +47,6 @@
+ 	decoder.c decoder.h sliced.h \
+ 	exp-gfx.c exp-gfx.h
+
+-if HAVE_GCC_LIMITS
+-libzvbiinline_la_CFLAGS = \
+-	--param max-inline-insns-single=50000 \
+-	--param large-function-insns=150000 \
+-	--param inline-unit-growth=30000 \
+-	--param large-function-growth=30000
+-endif
+
+ lib_LTLIBRARIES = \
+ 	libzvbi.la \
+# ANDROID:ALL - Se reemplaza nl_langinfo por UTF-8 directo en conv.c para que funcione la compilacion en entornos Android Bionic que carecen de soporte nativo de langinfo.
+--- libzvbi/src/conv.c
++++ libzvbi/src/conv.c
+@@ -1255,7 +1255,7 @@
+ 
+ #if defined(HAVE_LANGINFO_H) && !defined(__ANDROID__)
+ 	if (NULL == dst_format)
+-		dst_format = nl_langinfo (CODESET);
++		dst_format = "UTF-8";
+ #endif
+ 
+ 	return dst_format; /* may be NULL */
+# ALL:ALL - Se elimina el subdirectorio de tests y demostraciones en Makefile.am para que funcione la compilacion sin depender de herramientas extras.
+--- libzvbi/Makefile.am
++++ libzvbi/Makefile.am
+@@ -17,7 +17,7 @@
+ DISTCLEANFILES = site_def.h
+ 
+ # Attn order matters.
+-SUBDIRS = \
++SUBDIRS = m4 doc src po
+ 	m4 \
+ 	src \
+ 	$(proxy_dirs) \

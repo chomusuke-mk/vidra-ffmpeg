@@ -1,0 +1,42 @@
+# WINDOWS:ALL - Se elimina bandera obsoleta -mno-cygwin para permitir compilar en GCC modernos para Windows.
+--- libxvid/build/generic/configure
++++ libxvid/build/generic/configure
+@@ -4395,7 +4395,7 @@
+ 	STATIC_LIB="xvidcore.\$(STATIC_EXTENSION)"
+ 	SHARED_LIB="xvidcore.\$(SHARED_EXTENSION)"
+ 	SPECIFIC_LDFLAGS="-shared -Wl,--dll,--out-implib,\$@.a libxvidcore.def"
+-	SPECIFIC_CFLAGS="-mno-cygwin"
++	SPECIFIC_CFLAGS=""
+ 	;;
+      darwin*)
+ 	STATIC_LIB="libxvidcore.\$(STATIC_EXTENSION)"
+@@ -5027,7 +5027,7 @@
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fmove-all-movables','',g`
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fnew-ra','',g`
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fwritable-strings','',g`
+-                SPECIFIC_CFLAGS=`echo $SPECIFIC_CFLAGS | sed s,'-mno-cygwin','',g`
++                SPECIFIC_CFLAGS=`echo $SPECIFIC_CFLAGS | sed s,'','',g`
+ 	fi
+ 
+ 	# GCC 3.4.x
+# WINDOWS:ALL - Se elimina bandera obsoleta -mno-cygwin para permitir compilar en GCC modernos para Windows.
+--- libxvid/build/generic/configure.in
++++ libxvid/build/generic/configure.in
+@@ -325,7 +325,7 @@
+ 	STATIC_LIB="xvidcore.\$(STATIC_EXTENSION)"
+ 	SHARED_LIB="xvidcore.\$(SHARED_EXTENSION)"
+ 	SPECIFIC_LDFLAGS="-shared -Wl,--dll,--out-implib,\$@.a libxvidcore.def"
+-	SPECIFIC_CFLAGS="-mno-cygwin"
++	SPECIFIC_CFLAGS=""
+ 	;;
+      darwin*)
+ 	STATIC_LIB="libxvidcore.\$(STATIC_EXTENSION)"
+@@ -728,7 +728,7 @@
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fmove-all-movables','',g`
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fnew-ra','',g`
+ 		CFLAGS=`echo $CFLAGS | sed s,'-fwritable-strings','',g`
+-                SPECIFIC_CFLAGS=`echo $SPECIFIC_CFLAGS | sed s,'-mno-cygwin','',g`
++                SPECIFIC_CFLAGS=`echo $SPECIFIC_CFLAGS | sed s,'','',g`
+ 	fi
+ 
+ 	# GCC 3.4.x

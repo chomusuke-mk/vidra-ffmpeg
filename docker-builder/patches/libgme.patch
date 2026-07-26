@@ -1,0 +1,12 @@
+# ALL:ALL - Se elimina la inclusion de librerias implicitas (gcc_s, gcc, c) en PC_LIBS de libgme para evitar fallos de enlace en cross-compilacion donde no existen.
+--- libgme/gme/CMakeLists.txt
++++ libgme/gme/CMakeLists.txt
+@@ -255,7 +255,7 @@
+     list(REMOVE_ITEM IMPLICITS_LIST "-lmingwex"
+          "-lmingw32" "-lmoldname" "-lmsvcrt" "-ladvapi32" "-lshell32"
+          "-luser32" "-lkernel32")
+-    string(REPLACE ";" " " PC_LIBS "${IMPLICITS_LIST}")
++    set(PC_LIBS "")
+ else()
+     set(PC_LIBS "")
+ endif(IMPLICITS_LIST)

@@ -1,0 +1,12 @@
+# ANDROID:ALL - Se reemplaza aligned_alloc por posix_memalign en exprfilter.cpp para que funcione la compilacion en Android Bionic < 28 que no posee aligned_alloc nativo.
+--- avisynth/avs_core/filters/exprfilter/exprfilter.cpp
++++ avisynth/avs_core/filters/exprfilter/exprfilter.cpp
+@@ -4357,7 +4357,7 @@
+     if (size % Alignment != 0) {
+       size = (size / Alignment + 1) * Alignment;
+     }
+-    void* ptr = aligned_alloc(Alignment, size);
++    void* ptr = nullptr; posix_memalign(&ptr, Alignment, size);
+     if (!ptr) throw std::bad_alloc();
+ #else
+     // Generic fallback for C++17 and later

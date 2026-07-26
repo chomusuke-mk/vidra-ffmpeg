@@ -1,0 +1,10 @@
+# ALL:ALL - Se agrega -lm a Libs en soxr.pc.in para que funcione el enlace estatico cruzado sin libreria matematica faltante.
+--- libsoxr/src/soxr.pc.in
++++ libsoxr/src/soxr.pc.in
+@@ -1,5 +1,5 @@
+ Name: ${PROJECT_NAME}
+ Description: ${DESCRIPTION_SUMMARY}
+ Version: ${PROJECT_VERSION}
+-Libs: -L${LIB_INSTALL_DIR} -l${PROJECT_NAME}
++Libs: -L${LIB_INSTALL_DIR} -l${PROJECT_NAME} -lm
+ Cflags: -I${INCLUDE_INSTALL_DIR}

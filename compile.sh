@@ -15,7 +15,6 @@ rm -rf /dist/*
 mkdir -p /dist
 
 # Parche urgente para sdl2.pc (agrega -liconv a Libs en lugar de Libs.private)
-find /compiled -name "sdl2.pc" -exec sed -i 's/^Libs: .*/& -liconv/' {} +
 echo "Descargando código fuente de FFmpeg (versión: $FFMPEG_VERSION)..."
 TAR_URL="https://github.com/${FFMPEG_REPO}/archive/${FFMPEG_VERSION}.tar.gz"
 
@@ -45,7 +44,85 @@ build_linux() {
 
 	cd $LINUX_FFMPEG
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libsoxr --enable-openssl --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --enable-libxcb --enable-xlib --enable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --disable-schannel --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --enable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
+	local feature_flags=(
+		"--enable-iconv"
+		"--enable-zlib"
+		"--enable-libxml2"
+		"--enable-libsoxr"
+		"--enable-openssl"
+		"--enable-libvmaf"
+		"--enable-fontconfig"
+		"--enable-libharfbuzz"
+		"--enable-libfreetype"
+		"--enable-libfribidi"
+		"--enable-vulkan"
+		"--disable-libshaderc"
+		"--enable-libvorbis"
+		"--enable-libxcb"
+		"--enable-xlib"
+		"--enable-libpulse"
+		"--enable-gmp"
+		"--enable-lzma"
+		"--enable-liblcevc-dec"
+		"--enable-opencl"
+		"--enable-amf"
+		"--enable-libaom"
+		"--enable-libaribb24"
+		"--enable-avisynth"
+		"--enable-chromaprint"
+		"--enable-libdav1d"
+		"--enable-libdavs2"
+		"--enable-libdvdread"
+		"--enable-libdvdnav"
+		"--disable-libfdk-aac"
+		"--enable-ffnvcodec"
+		"--enable-cuda-llvm"
+		"--enable-frei0r"
+		"--enable-libgme"
+		"--enable-libkvazaar"
+		"--enable-libaribcaption"
+		"--enable-libass"
+		"--enable-libbluray"
+		"--enable-libjxl"
+		"--enable-libmp3lame"
+		"--enable-libopus"
+		"--enable-libplacebo"
+		"--enable-librist"
+		"--enable-libssh"
+		"--enable-libtheora"
+		"--enable-libvpx"
+		"--enable-libwebp"
+		"--enable-libzmq"
+		"--enable-lv2"
+		"--enable-libvpl"
+		"--enable-openal"
+		"--enable-liboapv"
+		"--enable-libopencore-amrnb"
+		"--enable-libopencore-amrwb"
+		"--enable-libopenh264"
+		"--enable-libopenjpeg"
+		"--enable-libopenmpt"
+		"--enable-librav1e"
+		"--enable-librubberband"
+		"--disable-schannel"
+		"--enable-sdl2"
+		"--enable-libsnappy"
+		"--enable-libsrt"
+		"--enable-libsvtav1"
+		"--enable-libtwolame"
+		"--enable-libuavs3d"
+		"--enable-libdrm"
+		"--enable-vaapi"
+		"--enable-libvidstab"
+		"--enable-libvvenc"
+		"--disable-whisper"
+		"--enable-libx264"
+		"--enable-libx265"
+		"--enable-libxavs2"
+		"--enable-libxvid"
+		"--enable-libzimg"
+		"--enable-libzvbi"
+	)
 
 	./configure \
 		--prefix="$LIBS_PREFIX" \
@@ -59,7 +136,7 @@ build_linux() {
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-static -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic -liconv" \
-		$feature_flags || {
+		"${feature_flags[@]}" || {
 		tail -n 100 ffbuild/config.log
 		exit 1
 	}
@@ -90,24 +167,92 @@ build_windows() {
 
 	local -x PKG_CONFIG="$LIBS_PREFIX/windows-pkg-config.sh"
 	if [ ! -f "$PKG_CONFIG" ]; then
-		cat <<'EOF' > "$PKG_CONFIG"
-#!/usr/bin/env bash
-out=$(/usr/bin/pkg-config "$@")
-status=$?
-if [ "$status" -ne 0 ]; then
-    exit "$status"
-fi
-printf '%s\n' "$out" | sed -E 's/(^|[[:space:]])-lgcc_s([^[:space:]]*)//g; s/[[:space:]]+/ /g; s/^ //; s/ $//'
-EOF
-		chmod +x "$PKG_CONFIG"
+		echo "Error: windows-pkg-config.sh not found in $LIBS_PREFIX"
+		exit 1
 	fi
 
 	local -x EXTRA_LDFLAGS_COMPAT=""
 
 	cd $WINDOWS_FFMPEG
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --disable-vaapi --enable-libvidstab --disable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi"
-
+	local feature_flags=(
+		"--enable-iconv"
+		"--enable-zlib"
+		"--enable-libxml2"
+		"--enable-libvmaf"
+		"--enable-fontconfig"
+		"--enable-libharfbuzz"
+		"--enable-libfreetype"
+		"--enable-libfribidi"
+		"--enable-vulkan"
+		"--disable-libshaderc"
+		"--enable-libvorbis"
+		"--disable-libxcb"
+		"--disable-xlib"
+		"--disable-libpulse"
+		"--enable-gmp"
+		"--enable-lzma"
+		"--enable-liblcevc-dec"
+		"--enable-opencl"
+		"--enable-amf"
+		"--enable-libaom"
+		"--enable-libaribb24"
+		"--enable-avisynth"
+		"--enable-chromaprint"
+		"--enable-libdav1d"
+		"--enable-libdavs2"
+		"--enable-libdvdread"
+		"--enable-libdvdnav"
+		"--disable-libfdk-aac"
+		"--enable-ffnvcodec"
+		"--enable-cuda-llvm"
+		"--enable-frei0r"
+		"--enable-libgme"
+		"--enable-libkvazaar"
+		"--enable-libaribcaption"
+		"--enable-libass"
+		"--enable-libbluray"
+		"--enable-libjxl"
+		"--enable-libmp3lame"
+		"--enable-libopus"
+		"--enable-libplacebo"
+		"--enable-librist"
+		"--enable-libssh"
+		"--enable-libtheora"
+		"--enable-libvpx"
+		"--enable-libwebp"
+		"--enable-libzmq"
+		"--enable-lv2"
+		"--enable-libvpl"
+		"--enable-openal"
+		"--enable-liboapv"
+		"--enable-libopencore-amrnb"
+		"--enable-libopencore-amrwb"
+		"--enable-libopenh264"
+		"--enable-libopenjpeg"
+		"--enable-libopenmpt"
+		"--enable-librav1e"
+		"--enable-librubberband"
+		"--enable-schannel"
+		"--enable-sdl2"
+		"--enable-libsnappy"
+		"--enable-libsoxr"
+		"--enable-libsrt"
+		"--enable-libsvtav1"
+		"--enable-libtwolame"
+		"--enable-libuavs3d"
+		"--disable-libdrm"
+		"--disable-vaapi"
+		"--enable-libvidstab"
+		"--disable-libvvenc"
+		"--disable-whisper"
+		"--enable-libx264"
+		"--enable-libx265"
+		"--enable-libxavs2"
+		"--enable-libxvid"
+		"--enable-libzimg"
+		"--enable-libzvbi"
+	)
 	local optflags="-O1"
 
 	./configure \
@@ -115,7 +260,7 @@ EOF
 		--arch=x86_64 \
 		--cross-prefix=$CROSS_PREFIX \
 		--prefix="$LIBS_PREFIX" \
-		--pkg-config=$PKG_CONFIG \
+		--pkg-config="$PKG_CONFIG" \
 		--pkg-config-flags="--static" \
 		--enable-gpl \
 		--enable-version3 \
@@ -128,7 +273,7 @@ EOF
 		--extra-cflags="-static -std=gnu11 -I$LIBS_PREFIX/include -I$WIN_SYSROOT/include -DCHROMAPRINT_NODLL -DKVZ_STATIC_LIB -DLIBTWOLAME_STATIC -DZMQ_STATIC -DAL_LIBTYPE_STATIC -DLIBSSH_STATIC -D_ISOC11_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DWIN32_LEAN_AND_MEAN -D__USE_MINGW_ANSI_STDIO=1 -D_POSIX_C_SOURCE=200112 -D_XOPEN_SOURCE=600 -DPIC" \
 		--extra-ldflags="$EXTRA_LDFLAGS_COMPAT -static -static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
 		--extra-libs="-static-libgcc -static-libstdc++ -lgomp -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lstdc++ -lwinpthread -lharfbuzz -lfreetype -lrpcrt4 -lusp10 -lole32 -luuid -lavrt -lwinmm -lcfgmgr32" \
-		$feature_flags || {
+		"${feature_flags[@]}" || {
 		tail -n 100 ffbuild/config.log
 		exit 1
 	}
@@ -149,7 +294,7 @@ build_android() {
 	echo "=================================================="
 	local -x ANDROID_FFMPEG="/tmp/app/android/$ABI/ffmpeg"
 	rm -rf "$ANDROID_FFMPEG" && mkdir -p "$ANDROID_FFMPEG" && cp -r /app/ffmpeg/* "$ANDROID_FFMPEG"
-	local arch_extra_flags=""
+	local arch_extra_flags=()
 	local neon_flag=""
 	local optflags="-O3"
 	local TARGET_HOST="" ARCH="" CPU=""
@@ -172,13 +317,13 @@ build_android() {
 		TARGET_HOST="i686-linux-android"
 		ARCH="x86"
 		CPU=""
-		arch_extra_flags="--disable-x86asm --disable-asm"
+		arch_extra_flags+=("--disable-x86asm" "--disable-asm")
 		;;
 	x86_64)
 		TARGET_HOST="x86_64-linux-android"
 		ARCH="x86_64"
 		CPU=""
-		arch_extra_flags="--disable-x86asm"
+		arch_extra_flags+=("--disable-x86asm")
 		optflags="-O1"
 		;;
 	esac
@@ -200,9 +345,88 @@ build_android() {
 	make distclean >/dev/null 2>&1 || true
 
 	# Parchear archivos .pc de pkg-config generados por CMake/Meson/Cargo que pueden contener dependencias de glibc inexistentes en Android (Bionic)
-	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec sed -i 's/-l-pthread//g; s/-lpthread//g; s/-l-l:libunwind.a//g; s/-l:libunwind.a//g; s/libunwind.a//g; s/-lc++ //g; s/-lc++$//g; s/-lutil //g; s/-lutil$//g; s/-lrt //g; s/-lrt$//g' {} + 2>/dev/null || true
+	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec sh -c 'for f; do content=$(cat "$f"); content="${content//-l-pthread/}"; content="${content//-lpthread/}"; content="${content//-l-l:libunwind.a/}"; content="${content//-l:libunwind.a/}"; content="${content//libunwind.a/}"; content="${content//-lc++ / }"; content="${content%-lc++}"; content="${content//-lutil / }"; content="${content%-lutil}"; content="${content//-lrt / }"; content="${content%-lrt}"; echo "$content" > "$f"; done' _ {} + 2>/dev/null || true
 
-	local feature_flags="--enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --disable-libshaderc --enable-libvorbis --enable-gmp --enable-lzma --enable-liblcevc-dec --disable-opencl --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --disable-ffnvcodec --disable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-sdl2 --enable-libsnappy --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-vaapi --enable-libvidstab --enable-libvvenc --disable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --enable-libsoxr --disable-libxcb --disable-xlib --disable-libpulse --disable-libdrm --disable-schannel --enable-mediacodec --enable-jni"
+	local feature_flags=(
+		"--enable-iconv"
+		"--enable-zlib"
+		"--enable-libxml2"
+		"--enable-libvmaf"
+		"--enable-fontconfig"
+		"--enable-libharfbuzz"
+		"--enable-libfreetype"
+		"--enable-libfribidi"
+		"--enable-vulkan"
+		"--disable-libshaderc"
+		"--enable-libvorbis"
+		"--enable-gmp"
+		"--enable-lzma"
+		"--enable-liblcevc-dec"
+		"--disable-opencl"
+		"--enable-amf"
+		"--enable-libaom"
+		"--enable-libaribb24"
+		"--enable-avisynth"
+		"--enable-chromaprint"
+		"--enable-libdav1d"
+		"--enable-libdavs2"
+		"--enable-libdvdread"
+		"--enable-libdvdnav"
+		"--disable-libfdk-aac"
+		"--disable-ffnvcodec"
+		"--disable-cuda-llvm"
+		"--enable-frei0r"
+		"--enable-libgme"
+		"--enable-libkvazaar"
+		"--enable-libaribcaption"
+		"--enable-libass"
+		"--enable-libbluray"
+		"--enable-libjxl"
+		"--enable-libmp3lame"
+		"--enable-libopus"
+		"--enable-libplacebo"
+		"--enable-librist"
+		"--enable-libssh"
+		"--enable-libtheora"
+		"--enable-libvpx"
+		"--enable-libwebp"
+		"--enable-libzmq"
+		"--enable-lv2"
+		"--enable-libvpl"
+		"--enable-openal"
+		"--enable-liboapv"
+		"--enable-libopencore-amrnb"
+		"--enable-libopencore-amrwb"
+		"--enable-libopenh264"
+		"--enable-libopenjpeg"
+		"--enable-libopenmpt"
+		"--enable-librav1e"
+		"--enable-librubberband"
+		"--enable-sdl2"
+		"--enable-libsnappy"
+		"--enable-libsrt"
+		"--enable-libsvtav1"
+		"--enable-libtwolame"
+		"--enable-libuavs3d"
+		"--disable-vaapi"
+		"--enable-libvidstab"
+		"--enable-libvvenc"
+		"--disable-whisper"
+		"--enable-libx264"
+		"--enable-libx265"
+		"--enable-libxavs2"
+		"--enable-libxvid"
+		"--enable-libzimg"
+		"--enable-libzvbi"
+		"--enable-libsoxr"
+		"--disable-libxcb"
+		"--disable-xlib"
+		"--disable-libpulse"
+		"--disable-libdrm"
+		"--disable-schannel"
+		"--enable-mediacodec"
+		"--enable-jni"
+	)
 
 	./configure \
 		--prefix="$PREFIX" \
@@ -229,14 +453,20 @@ build_android() {
 		--disable-ffplay \
 		--optflags="$optflags" \
 		${neon_flag:+$neon_flag} \
-		$arch_extra_flags \
-		$feature_flags || {
+		"${arch_extra_flags[@]}" \
+		"${feature_flags[@]}" || {
 		tail -n 100 ffbuild/config.log
 		exit 1
 	}
 
 	# Force static libc++ so ffmpeg does not depend on libc++_shared.so
-	sed -i 's/-lstdc++/-lc++_static -lc++abi -lunwind/g; s/-lc++ /-lc++_static /g; s/-lc++$/-lc++_static/g' ffbuild/config.mak
+	if [ -f ffbuild/config.mak ]; then
+		content=$(cat ffbuild/config.mak)
+		content="${content//-lstdc++/-lc++_static -lc++abi -lunwind}"
+		content="${content//-lc++ /-lc++_static }"
+		content="${content%-lc++}"
+		echo "$content" >ffbuild/config.mak
+	fi
 
 	make -j"$(nproc)"
 

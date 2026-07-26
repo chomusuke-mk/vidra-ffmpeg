@@ -1,3 +1,4 @@
+# windows:all - Se reemplaza logica original para adaptarla al sistema con parches estaticos para que funcione la compilacion sin sed y cruce correctamente.
 --- /dev/null
 +++ windows-toolchain.cmake
 @@ -0,0 +1,9 @@

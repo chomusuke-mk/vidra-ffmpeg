@@ -1,0 +1,34 @@
+# ALL:ALL - Se comenta SetThreadDescription en Windows y se agrega -lstdc++ y -lm a pc.in para que funcione la compilacion en entornos antiguos de MinGW y el enlace estatico cruzado.
+--- liblcevc/cmake/templates/lcevc_dec.pc.in
++++ liblcevc/cmake/templates/lcevc_dec.pc.in
+@@ -6,7 +6,7 @@
+ Description: LCEVC Decoder SDK
+ URL: https://github.com/v-novaltd/LCEVCdec
+ Version: @PC_VERSION@
+-Libs: -L"${libdir}" @PC_LIBS@
++Libs: -L"${libdir}" @PC_LIBS@ -lstdc++ -lm
+ Cflags: -I"${includedir}"
+ @PC_LIBS_PRIVATE@
+ @PC_REQUIRES_PRIVATE@
+--- liblcevc/src/api_utility/src/threading.cpp
++++ liblcevc/src/api_utility/src/threading.cpp
+@@ -41,7 +41,7 @@
+     int bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, NULL, 0);
+     WCHAR buf[bufsize];
+     bufsize = MultiByteToWideChar(CP_UTF8, 0, name, -1, buf, bufsize);
+-    const HRESULT hr = SetThreadDescription(GetCurrentThread(), buf);
++    const HRESULT hr = 0;
+     if (FAILED(hr)) {
+         return false;
+     }
+--- liblcevc/src/common/src/threads_win32.c
++++ liblcevc/src/common/src/threads_win32.c
+@@ -86,7 +86,7 @@
+     mbstowcs(wname, name, sizeof(wname) / sizeof(wname[1]) - 1);
+ 
+     // This might not be available on Windows prior to Windows10
+-    const HRESULT hr = SetThreadDescription(GetCurrentThread(), wname);
++    const HRESULT hr = 0;
+     if (FAILED(hr)) {
+         VNLogWarning("Cannot set thread name");
+     }

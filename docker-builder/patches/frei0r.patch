@@ -1,0 +1,11 @@
+# ALL:ALL - Se elimina el subdirectorio de test en CMakeLists.txt para que funcione la compilacion sin OpenCV u otras dependencias.
+--- frei0r/CMakeLists.txt
++++ frei0r/CMakeLists.txt
+@@ -61,7 +61,6 @@
+ 
+ add_subdirectory (src)
+ if (BUILD_TESTING)
+-  add_subdirectory (test)
+ endif ()
+ 
+ # Generate frei0r.pc and install it.

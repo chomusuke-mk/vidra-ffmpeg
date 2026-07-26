@@ -1,0 +1,14 @@
+# ALL:ALL - Se filtran librerias estandar implicitas (gcc, gcc_s, c, c++abi) en CMakeLists.txt para evitar dependencias inexistentes en toolchains Bionic/Android.
+--- libsrt/CMakeLists.txt
++++ libsrt/CMakeLists.txt
+@@ -1329,8 +1329,10 @@
+ 		if((IS_ABSOLUTE ${LIB} AND EXISTS ${LIB}) OR (${LIB} MATCHES "^-l"))
+ 			set(SRT_LIBS_PRIVATE ${SRT_LIBS_PRIVATE} ${LIB})
+ 		else()
++			if(NOT "${LIB}" MATCHES "^(gcc_s|gcc|c|c\\+\\+abi)$")
+ 			set(SRT_LIBS_PRIVATE ${SRT_LIBS_PRIVATE} "-l${LIB}")
+ 		endif()
++		endif()
+ 	endforeach()
+ endif()
+ 
