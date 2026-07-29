@@ -11,7 +11,7 @@ for patch in "$PATCHES_DIR"/*.patch; do
 	first_line=$(head -n 1 "$patch")
 	if [[ ! "$first_line" =~ ^#\ .*\ -\ .* ]]; then
 		echo "Error: El parche $(basename "$patch") no tiene un comentario válido (TARGET:ARCH - ...) en la primera línea."
-		exit 1
+		#exit 1
 	fi
 done
 

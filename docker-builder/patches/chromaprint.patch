@@ -1,7 +1,7 @@
 # ALL:ALL - Add private libraries to the pkg-config file
 --- chromaprint/libchromaprint.pc.cmake
 +++ chromaprint/libchromaprint.pc.cmake
-@@ -8,5 +8,6 @@
+@@ -8,4 +8,5 @@
  URL: http://acoustid.org/chromaprint
  Version: @PROJECT_VERSION@
  Libs: -L${libdir} -lchromaprint

@@ -1,14 +1,14 @@
 # ALL:ALL - Se reemplaza la referencia directa a pthread por Threads::Threads y se elimina -lpthread en pc_file para que funcione el enlace de hilos portable en CMake.
+# Add i686 support for x86 build
+# Remove hard float ABI flag which breaks Android armeabi-v7a build
 --- libuavs3d/source/CMakeLists.txt
 +++ libuavs3d/source/CMakeLists.txt
-# Add i686 support for x86 build
 @@ -13,4 +13,4 @@
    endif()
 -elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i386" OR
 +elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i386" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686" OR
         "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86")
    set(UAVS3D_TARGET_CPU "x86")
-# Remove hard float ABI flag which breaks Android armeabi-v7a build
 @@ -63,6 +64,6 @@
    # Add NEON support for ARMv7
    # Use hard float ABI to match the musleabihf toolchain

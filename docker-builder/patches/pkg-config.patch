@@ -1,5 +1,7 @@
 # windows:all - Se agrega un script de pkg-config para windows para que funcione la compilacion sin sed y cruce correctamente.
+diff --git windows-pkg-config.sh windows-pkg-config.sh
 new file mode 100755
+index 0000000..e69de29
 --- /dev/null
 +++ windows-pkg-config.sh
 @@ -0,0 +1,9 @@
@@ -12,7 +14,9 @@ new file mode 100755
 +out="${out//-lgcc_s/}"
 +out=$(echo "$out" | tr -s " " | xargs)
 +printf '%s\n' "$out"
+diff --git windows-create-pkg-config.sh windows-create-pkg-config.sh
 new file mode 100755
+index 0000000..e69de29
 --- /dev/null
 +++ windows-create-pkg-config.sh
 @@ -0,0 +1,13 @@

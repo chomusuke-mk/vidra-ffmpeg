@@ -170,7 +170,11 @@ build_library() {
 			x86_64) extra_args+=("--target=x86_64-android-gcc") ;;
 			esac
 		fi
-		build_autotools --prefix="$BUILDING_PREFIX" "${extra_args[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static
+		pushd "$BUILDING_DIR" >/dev/null
+		./configure --prefix="$BUILDING_PREFIX" "${extra_args[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static || return 1
+		make -j"$(nproc)" || return 1
+		make install || return 1
+		popd >/dev/null
 		;;
 	openal) build_cmake -DALSOFT_EXAMPLES=OFF -DALSOFT_UTILS=OFF -DLIBTYPE=STATIC -DCMAKE_EXE_LINKER_FLAGS="-lm" ;;
 	librav1e)
@@ -231,6 +235,15 @@ build_library() {
 		;;
 	libtheora) build_autotools --disable-spec --disable-asm --disable-maintainer-mode ;;
 	libplacebo) build_meson -Ddemos=false ;;
+	zlib)
+		build_cmake -DBUILD_SHARED_LIBS=OFF
+		if [ -f "$BUILDING_PREFIX/lib/libzs.a" ]; then
+			mv "$BUILDING_PREFIX/lib/libzs.a" "$BUILDING_PREFIX/lib/libz.a"
+		fi
+		if [ -f "$BUILDING_PREFIX/lib/libzlibstatic.a" ]; then
+			mv "$BUILDING_PREFIX/lib/libzlibstatic.a" "$BUILDING_PREFIX/lib/libz.a"
+		fi
+		;;
 	libsoxr) build_cmake -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DWITH_OPENMP=OFF ;;
 	libssh) build_cmake -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF -DWITH_GSSAPI=OFF -DZLIB_LIBRARY="$BUILDING_PREFIX/lib/libz.a" -DZLIB_INCLUDE_DIR="$BUILDING_PREFIX/include" -DCMAKE_C_FLAGS="-I$BUILDING_PREFIX/include" ;;
 	opencl-icd-loader)
@@ -424,7 +437,7 @@ compile_windows() {
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x CROSS_PREFIX="x86_64-w64-mingw32-"
-	"${BUILD_ROOT}/windows-create-pkg-config.sh" "$CROSS_PREFIX" "$PKG_CONFIG_PATH" "$PKG_CONFIG_LIBDIR"
+	bash "${BUILD_ROOT}/windows-create-pkg-config.sh" "$CROSS_PREFIX" "$PKG_CONFIG_PATH" "$PKG_CONFIG_LIBDIR"
 	local -x CC="${CROSS_PREFIX}gcc"
 	local -x CXX="${CROSS_PREFIX}g++"
 	local -x AR="${CROSS_PREFIX}ar"
