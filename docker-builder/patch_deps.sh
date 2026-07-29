@@ -11,13 +11,12 @@ echo "Aplicando todos los parches generados..."
 for patch_file in "$PATCHES_DIR"/*.patch; do
 	echo "Aplicando $(basename "$patch_file")"
 	#patch --batch --binary -p0 <"$patch_file"
-	git apply -p0 --verbose "$patch_file"
+	git apply -p0 --ignore-space-change --ignore-whitespace "$patch_file"
 done
+echo "Fixing permissions for shell scripts..."
+chmod +x "windows-create-pkg-config.sh" "windows-pkg-config.sh"
 
 popd >/dev/null
-
-#echo "Fixing permissions for shell scripts..."
-#find "$SRC_ROOT" -maxdepth 1 -name "*.sh" -exec chmod +x {} \;
 
 echo "Configurando dependencias de libjxl"
 pushd "$SRC_ROOT/libjxl" >/dev/null

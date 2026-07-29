@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+trap 'on_error $?' EXIT
+on_error() {
+	local exit_code=$1
+	if [ "$exit_code" -ne 0 ]; then
+		if [ -n "${CURRENT_LIB:-}" ] && [ -n "${CURRENT_LOG_FILE:-}" ] && [ -f "$CURRENT_LOG_FILE" ]; then
+			echo -e "\n❌ FALLO DETECTADO procesando a '$CURRENT_LIB'. El script se detendrá." >&2
+			echo "--- INICIO DE CONTENIDO DE $CURRENT_LOG_FILE ---" >&2
+			cat "$CURRENT_LOG_FILE" >&2
+			echo "--- FIN DE CONTENIDO DE $CURRENT_LOG_FILE ---" >&2
+		fi
+	fi
+}
+
 SRC_ROOT="$(realpath "$1")"
 COMPILATION_DIR="$(realpath "$2")"
 TEMP_DIR="$(realpath "$3")"
@@ -171,9 +184,9 @@ build_library() {
 			esac
 		fi
 		pushd "$BUILDING_DIR" >/dev/null
-		./configure --prefix="$BUILDING_PREFIX" "${extra_args[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static || return 1
-		make -j"$(nproc)" || return 1
-		make install || return 1
+		./configure --prefix="$BUILDING_PREFIX" "${extra_args[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static
+		make -j"$(nproc)"
+		make install
 		popd >/dev/null
 		;;
 	openal) build_cmake -DALSOFT_EXAMPLES=OFF -DALSOFT_UTILS=OFF -DLIBTYPE=STATIC -DCMAKE_EXE_LINKER_FLAGS="-lm" ;;
@@ -288,7 +301,8 @@ build_library() {
 		elif [ -f "$BUILDING_DIR/Makefile" ]; then
 			build_make
 		else
-			echo "Error libreria $name desconocida y no se pudo determinar el sistema de compilacion" && exit 1
+			echo "Error libreria $name desconocida y no se pudo determinar el sistema de compilacion"
+			return 1
 		fi
 		;;
 	esac
@@ -407,14 +421,11 @@ compile_linux() {
 	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
 		echo "--> Compilando $lib"
-		archivo_log="$LOGS_ROOT/$lib.log"
-		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
-			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
-			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
-			cat "$archivo_log" >&2
-			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
-			exit 1
-		fi
+		CURRENT_LIB="$lib"
+		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
+		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		CURRENT_LIB=""
+		CURRENT_LOG_FILE=""
 	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
@@ -539,14 +550,11 @@ compile_windows() {
 	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
 		echo "--> Compilando $lib"
-		archivo_log="$LOGS_ROOT/$lib.log"
-		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
-			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
-			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
-			cat "$archivo_log" >&2
-			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
-			exit 1
-		fi
+		CURRENT_LIB="$lib"
+		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
+		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		CURRENT_LIB=""
+		CURRENT_LOG_FILE=""
 	done
 
 	cp "$SRC_ROOT/windows-pkg-config.sh" "$PREFIX/windows-pkg-config.sh"
@@ -686,18 +694,15 @@ compile_android() {
 	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
 		echo "--> Compilando $lib"
-		archivo_log="$LOGS_ROOT/$lib.log"
-		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
-			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
-			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
-			cat "$archivo_log" >&2
-			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
-			exit 1
-		fi
+		CURRENT_LIB="$lib"
+		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
+		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		CURRENT_LIB=""
+		CURRENT_LOG_FILE=""
 	done
 
 	# Clean up pc files on Android
-	find "$PREFIX/lib/pkgconfig" -name "*.pc" -type f -exec sed -i -e 's/-lpthread//g' -e 's/-lrt//g' -e 's/-lexecinfo//g' -e 's/libexecinfo\.a//g' -e 's/-lunwind//g' -e 's/libunwind\.a//g' {} + || true
+	find "$PREFIX/lib/pkgconfig" -name "*.pc" -type f -exec sed -i -e 's/-lpthread//g' -e 's/-l-pthread//g' -e 's/-pthread//g' -e 's/-lrt//g' -e 's/-lexecinfo//g' -e 's/libexecinfo\.a//g' -e 's/-lunwind//g' -e 's/libunwind\.a//g' -e 's/-l: //g' -e 's/-l-ldl//g' {} + || true
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
 	echo "---- Tiempos de compilación por librería ----"
