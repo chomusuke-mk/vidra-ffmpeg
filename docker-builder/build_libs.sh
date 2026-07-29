@@ -4,8 +4,9 @@ set -euo pipefail
 SRC_ROOT="$(realpath "$1")"
 COMPILATION_DIR="$(realpath "$2")"
 TEMP_DIR="$(realpath "$3")"
-TARGET_OS=${4:-"all"}
-TARGET_ARCH=${5:-"all"}
+LOGS_DIR="$(realpath "$4")"
+TARGET_OS=${5:-"all"}
+TARGET_ARCH=${6:-"all"}
 
 API_LEVEL=24
 TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
@@ -35,7 +36,7 @@ build_meson() {
 		cross_args=("--cross-file=$MESON_CROSS_FILE")
 	fi
 	meson setup build --prefix="$BUILDING_PREFIX" "${cross_args[@]}" --libdir="lib" --buildtype=release --default-library=static "$@"
-	ninja -C build
+	ninja -C build -j "$(nproc)"
 	ninja -C build install
 	popd >/dev/null
 }
@@ -82,22 +83,14 @@ build_library() {
 	name=$(basename "$BUILDING_DIR")
 	local start_time
 	start_time=$(date +%s)
-	echo "--- Compilando $name ----------------------------------------------------------------------------------------------------"
 
 	case "$name" in
 	zix) build_meson -Dtests=disabled -Dbenchmarks=disabled ;;
 	frei0r) build_cmake -DWITHOUT_OPENCV=ON -DWITHOUT_CAIRO=ON -DWITHOUT_GAVL=ON -DWITHOUT_FACERECOGNITION=ON -DBUILD_TESTING=OFF ;;
 	amf) mkdir -p "$BUILDING_PREFIX/include/" && cp -r "$BUILDING_DIR/"* "$BUILDING_PREFIX/include/" ;;
-	libaribb24) build_autotools ;;
 	libopenmpt) build_autotools --without-mpg123 --disable-openmpt123 ;;
-	chromaprint)
-		build_cmake -DBUILD_TOOLS=OFF -DBUILD_TESTS=OFF -DFFT_LIB=fftw3 -DFFTW3_DIR="$BUILDING_PREFIX" -DFFTW3_INCLUDE_DIR="$BUILDING_PREFIX/include" -DFFTW3_INCLUDE_DIRS="$BUILDING_PREFIX/include" -DFFTW3_LIBRARY="$BUILDING_PREFIX/lib/libfftw3.a" -DFFTW3_LIBRARIES="$BUILDING_PREFIX/lib/libfftw3.a"
-		;;
+	chromaprint) build_cmake -DBUILD_TOOLS=OFF -DBUILD_TESTS=OFF -DFFT_LIB=fftw3 -DFFTW3_DIR="$BUILDING_PREFIX" -DFFTW3_INCLUDE_DIR="$BUILDING_PREFIX/include" -DFFTW3_INCLUDE_DIRS="$BUILDING_PREFIX/include" -DFFTW3_LIBRARY="$BUILDING_PREFIX/lib/libfftw3.a" -DFFTW3_LIBRARIES="$BUILDING_PREFIX/lib/libfftw3.a" ;;
 	sdl2) build_cmake -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF ;;
-	iconv)
-		rm -f "$BUILDING_DIR/configure.ac" "$BUILDING_DIR/autogen.sh" "$BUILDING_DIR/Makefile"
-		build_autotools
-		;;
 	openssl)
 		pushd "$BUILDING_DIR" >/dev/null
 		if [ "$TARGET_OS" == "windows" ]; then
@@ -105,7 +98,7 @@ build_library() {
 		elif [ "$TARGET_OS" == "android" ]; then
 			local ssl_arch=""
 			case "$TARGET_ARCH" in
-			arm64-v8a | arm-v8a) ssl_arch="android-arm64" ;;
+			arm64-v8a) ssl_arch="android-arm64" ;;
 			armeabi-v7a) ssl_arch="android-arm" ;;
 			x86) ssl_arch="android-x86" ;;
 			x86_64) ssl_arch="android-x86_64" ;;
@@ -120,132 +113,103 @@ build_library() {
 		make install_sw
 		popd >/dev/null
 		;;
-	libdavs2 | libxavs2)
-		local BUILDING_DIR="$BUILDING_DIR/build/linux"
-		build_autotools --disable-asm --extra-cflags="-Wno-incompatible-function-pointer-types"
-		;;
+	libdavs2 | libxavs2) BUILDING_DIR="$BUILDING_DIR/build/linux" build_autotools --disable-asm --extra-cflags="-Wno-incompatible-function-pointer-types" ;;
 	libbluray) build_meson -Denable_tools=false -Denable_devtools=false -Denable_examples=false ;;
-	zlib) build_autotools ;;
 	libjxl) build_cmake -DJPEGXL_ENABLE_TOOLS=OFF -DJPEGXL_ENABLE_BENCHMARK=OFF -DJPEGXL_ENABLE_EXAMPLES=OFF -DJPEGXL_ENABLE_JNI=OFF -DJPEGXL_ENABLE_SKIA=OFF -DBUILD_TESTING=OFF -DSJPEG_ANDROID_NDK_PATH="${ANDROID_NDK_HOME}" ;;
 	libharfbuzz) build_meson -Dfreetype=enabled -Dtests=disabled -Ddocs=disabled -Dutilities=disabled -Dgpu=disabled -Dglib=disabled -Dgobject=disabled -Dicu=disabled ;;
-	liblcevc) build_cmake ;;
-	libvpl) build_cmake ;;
-	libgme) build_cmake ;;
-	vulkan-loader) build_cmake ;;
 	libfreetype) build_meson -Dharfbuzz=disabled ;;
 	fontconfig) build_meson -Dtests=disabled -Dtools=disabled -Ddoc=disabled ;;
 	libsndfile) build_cmake -DENABLE_EXTERNAL_LIBS=OFF ;;
 	libshaderc) build_cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON ;;
 	libsrt) build_cmake -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DENABLE_TESTING=OFF -DENABLE_UNITTESTS=OFF -DUSE_STATIC_LIBSTDCXX=ON ;;
-	libkvazaar) build_autotools ;;
 	librist)
-		extra_args=()
-		if [ "$TARGET_OS" == "windows" ]; then
-			extra_args+=("-Dhave_mingw_pthreads=true")
-		fi
+		local extra_args=()
+		[ "$TARGET_OS" == "windows" ] && extra_args+=("-Dhave_mingw_pthreads=true")
 		build_meson "${extra_args[@]}" -Dbuilt_tools=false -Dtest=false
 		;;
 	libx265)
 		BUILDING_DIR="$BUILDING_DIR/source"
 		local extra_args=()
-		if [ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ]; then
-			extra_args+=("-DENABLE_ASSEMBLY=OFF")
-		fi
+		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("-DENABLE_ASSEMBLY=OFF")
 		build_cmake -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "${extra_args[@]}"
 		;;
 	libx264)
 		local extra_args=("--enable-pic")
-		if [ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ]; then
-			extra_args+=("--disable-asm")
-		fi
+		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("--disable-asm")
 		build_autotools "${extra_args[@]}"
 		;;
 	lame) build_autotools --disable-decoder ;;
-	libtwolame) build_autotools ;;
 	libuavs3d)
 		local extra_args=()
-		if [ "${TARGET_OS:-}" == "android" ]; then
-			extra_args=("-DCMAKE_THREAD_LIBS_INIT=-lc" "-DCMAKE_HAVE_THREADS_LIBRARY=1" "-DCMAKE_USE_WIN32_THREADS_INIT=0" "-DCMAKE_USE_PTHREADS_INIT=1")
-		fi
+		[ "${TARGET_OS:-}" == "android" ] && extra_args=("-DCMAKE_THREAD_LIBS_INIT=-lc" "-DCMAKE_HAVE_THREADS_LIBRARY=1" "-DCMAKE_USE_WIN32_THREADS_INIT=0" "-DCMAKE_USE_PTHREADS_INIT=1")
 		build_cmake -DCOMPILE_10BIT=0 "${extra_args[@]}"
 		;;
 	libvorbis) build_cmake -DOGG_LIBRARY="$BUILDING_PREFIX/lib/libogg.a" -DOGG_INCLUDE_DIR="$BUILDING_PREFIX/include" ;;
 	libxml2)
-		if [ "${TARGET_OS:-}" != "linux" ]; then
-			build_cmake -DIconv_LIBRARY="$BUILDING_PREFIX/lib/libiconv.a" -DIconv_INCLUDE_DIR="$BUILDING_PREFIX/include"
-		else
-			build_cmake
-		fi
+		local extra_args=()
+		[ "${TARGET_OS:-}" != "linux" ] && extra_args+=("-DIconv_LIBRARY=$BUILDING_PREFIX/lib/libiconv.a" "-DIconv_INCLUDE_DIR=$BUILDING_PREFIX/include")
+		build_cmake "${extra_args[@]}"
 		;;
 	expat) build_cmake -DEXPAT_SHARED_LIBS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_DOCS=OFF ;;
 	libpulse)
-		if [ "${TARGET_OS:-}" != "linux" ]; then
-			build_meson -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false -Dc_link_args="-L$BUILDING_PREFIX/lib -liconv"
-		else
-			build_meson -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false
-		fi
+		local extra_args=()
+		[ "${TARGET_OS:-}" != "linux" ] && extra_args+=("-Dc_link_args=-L$BUILDING_PREFIX/lib -liconv")
+		build_meson -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false "${extra_args[@]}"
 		;;
 	libpng) build_cmake -DZLIB_LIBRARY="$BUILDING_PREFIX/lib/libz.a" -DZLIB_INCLUDE_DIR="$BUILDING_PREFIX/include" -DPNG_SHARED=OFF -DPNG_TESTS=OFF -DPNG_EXECUTABLES=OFF ;;
-	libvmaf)
-		BUILDING_DIR="$BUILDING_DIR/libvmaf"
-		build_meson -Denable_tests=false -Denable_docs=false
-		;;
-	libvpx | vpx)
-		local vpx_targets=()
+	libvmaf) BUILDING_DIR="$BUILDING_DIR/libvmaf" build_meson -Denable_tests=false -Denable_docs=false ;;
+	libvpx)
+		local extra_args=()
 		if [ "${TARGET_OS:-}" == "windows" ]; then
-			vpx_targets+=("--target=x86_64-win64-gcc")
+			extra_args+=("--target=x86_64-win64-gcc")
 		elif [ "${TARGET_OS:-}" == "android" ]; then
 			case "$TARGET_ARCH" in
-			arm64-v8a) vpx_targets+=("--target=arm64-android-gcc") ;;
-			armeabi-v7a) vpx_targets+=("--target=armv7-android-gcc") ;;
-			x86) vpx_targets+=("--target=x86-android-gcc") ;;
-			x86_64) vpx_targets+=("--target=x86_64-android-gcc") ;;
+			arm64-v8a) extra_args+=("--target=arm64-android-gcc") ;;
+			armeabi-v7a) extra_args+=("--target=armv7-android-gcc") ;;
+			x86) extra_args+=("--target=x86-android-gcc") ;;
+			x86_64) extra_args+=("--target=x86_64-android-gcc") ;;
 			esac
 		fi
-		cd "$BUILDING_DIR"
-		./configure --prefix="$BUILDING_PREFIX" "${vpx_targets[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static
-		make -j"$(nproc)"
-		make install
-		cd - >/dev/null
+		build_autotools --prefix="$BUILDING_PREFIX" "${extra_args[@]}" --enable-pic --disable-examples --disable-unit-tests --disable-tools --disable-docs --disable-shared --enable-static
 		;;
 	openal) build_cmake -DALSOFT_EXAMPLES=OFF -DALSOFT_UTILS=OFF -DLIBTYPE=STATIC -DCMAKE_EXE_LINKER_FLAGS="-lm" ;;
-	libva) build_meson ;;
 	librav1e)
-		pushd "$BUILDING_DIR" >/dev/null
-		local cargo_opts=(--no-default-features --features="asm,threading,signal_support,capi")
-		if [ -n "${CROSS_PREFIX:-}" ] && [[ "${CROSS_PREFIX}" == *"mingw"* ]]; then
-			rustup target add x86_64-pc-windows-gnu || true
-			cargo_opts+=(--target="x86_64-pc-windows-gnu")
-			local -x CC_x86_64_pc_windows_gnu="${CC}"
-			local -x CXX_x86_64_pc_windows_gnu="${CXX}"
-			local -x AR_x86_64_pc_windows_gnu="${AR}"
-			local -x CFLAGS_x86_64_pc_windows_gnu="${CFLAGS}"
-			local -x CXXFLAGS_x86_64_pc_windows_gnu="${CXXFLAGS}"
-			local -x CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="${CC}"
-			unset CC CXX AR RANLIB RC CFLAGS CXXFLAGS LDFLAGS HOST
-		elif [ "${TARGET_OS:-}" == "android" ]; then
-			local RUST_TARGET=""
-			case "$ABI" in
-			arm64-v8a) RUST_TARGET="aarch64-linux-android" ;;
-			armeabi-v7a) RUST_TARGET="armv7-linux-androideabi" ;;
-			x86) RUST_TARGET="i686-linux-android" ;;
-			x86_64) RUST_TARGET="x86_64-linux-android" ;;
-			esac
-			rustup target add $RUST_TARGET || true
-			cargo_opts+=(--target="$RUST_TARGET")
-			local -x CARGO_TARGET_"$(echo "$RUST_TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"_LINKER="${CC}"
-		fi
-		cargo cinstall --release --lib --prefix="$BUILDING_PREFIX" --libdir="lib" --library-type=staticlib "${cargo_opts[@]}"
-		if [ -f "$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc" ]; then
-			local content
-			content=$(cat "$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc")
-			content="${content//-lgcc_s/}"
-			content="${content//-lc /}"
-			echo "$content" >"$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc"
-		fi
-		popd >/dev/null
+		(
+			pushd "$BUILDING_DIR" >/dev/null
+			local cargo_opts=(--no-default-features --features="asm,threading,signal_support,capi")
+			if [ -n "${CROSS_PREFIX:-}" ] && [[ "${CROSS_PREFIX}" == *"mingw"* ]]; then
+				rustup target add x86_64-pc-windows-gnu || true
+				cargo_opts+=(--target="x86_64-pc-windows-gnu")
+				local -x CC_x86_64_pc_windows_gnu="${CC}"
+				local -x CXX_x86_64_pc_windows_gnu="${CXX}"
+				local -x AR_x86_64_pc_windows_gnu="${AR}"
+				local -x CFLAGS_x86_64_pc_windows_gnu="${CFLAGS}"
+				local -x CXXFLAGS_x86_64_pc_windows_gnu="${CXXFLAGS}"
+				local -x CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="${CC}"
+				unset CC CXX AR RANLIB RC CFLAGS CXXFLAGS LDFLAGS HOST
+			elif [ "${TARGET_OS:-}" == "android" ]; then
+				local RUST_TARGET=""
+				case "$ABI" in
+				arm64-v8a) RUST_TARGET="aarch64-linux-android" ;;
+				armeabi-v7a) RUST_TARGET="armv7-linux-androideabi" ;;
+				x86) RUST_TARGET="i686-linux-android" ;;
+				x86_64) RUST_TARGET="x86_64-linux-android" ;;
+				esac
+				rustup target add $RUST_TARGET || true
+				cargo_opts+=(--target="$RUST_TARGET")
+				local -x CARGO_TARGET_"$(echo "$RUST_TARGET" | tr '[:lower:]' '[:upper:]' | tr '-' '_')"_LINKER="${CC}"
+			fi
+			cargo cinstall --release --lib --prefix="$BUILDING_PREFIX" --libdir="lib" --library-type=staticlib "${cargo_opts[@]}"
+			if [ -f "$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc" ]; then
+				local content
+				content=$(cat "$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc")
+				content="${content//-lgcc_s/}"
+				content="${content//-lc /}"
+				echo "$content" >"$BUILDING_PREFIX/lib/pkgconfig/rav1e.pc"
+			fi
+			popd >/dev/null
+		)
 		;;
-	librubberband) build_meson ;;
 	libopenh264)
 		local args=("PREFIX=$BUILDING_PREFIX" "INCLUDE_PREFIX=$BUILDING_PREFIX/include")
 		if [ "${TARGET_OS:-}" == "android" ]; then
@@ -265,14 +229,7 @@ build_library() {
 		build_make libraries "${args[@]}"
 		build_make install "${args[@]}"
 		;;
-	libtheora)
-		rm -f "$BUILDING_DIR/autogen.sh"
-		cd "$BUILDING_DIR"
-		./configure --prefix="$BUILDING_PREFIX" --host="$HOST" --enable-static --disable-shared --with-pic --disable-examples --disable-spec --disable-asm --disable-maintainer-mode
-		make -j"$(nproc)"
-		make install
-		cd - >/dev/null
-		;;
+	libtheora) build_autotools --disable-spec --disable-asm --disable-maintainer-mode ;;
 	libplacebo) build_meson -Ddemos=false ;;
 	libsoxr) build_cmake -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DWITH_OPENMP=OFF ;;
 	libssh) build_cmake -DBUILD_SHARED_LIBS=OFF -DWITH_EXAMPLES=OFF -DWITH_SERVER=OFF -DWITH_GSSAPI=OFF -DZLIB_LIBRARY="$BUILDING_PREFIX/lib/libz.a" -DZLIB_INCLUDE_DIR="$BUILDING_PREFIX/include" -DCMAKE_C_FLAGS="-I$BUILDING_PREFIX/include" ;;
@@ -290,33 +247,24 @@ build_library() {
 		;;
 	libvvenc)
 		local extra_args=()
-		if [ "${TARGET_OS}" == "windows" ]; then
-			extra_args+=("-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF" "-DVVENC_ENABLE_LTO=OFF")
-		fi
-		if [ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ]; then
-			extra_args+=("-DVVENC_ENABLE_X86_SIMD=OFF")
-		fi
+		[ "${TARGET_OS}" == "windows" ] && extra_args+=("-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF" "-DVVENC_ENABLE_LTO=OFF")
+		[ "${TARGET_OS}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("-DVVENC_ENABLE_X86_SIMD=OFF")
 		build_cmake "${extra_args[@]}" -DBUILD_SHARED_LIBS=OFF -DVVENC_ENABLE_WERROR=OFF
 		;;
-	avisynth) build_cmake ;;
 	libass)
 		local extra_args=()
-		if [ "${TARGET_OS:-}" == "android" ] && [[ "$TARGET_ARCH" == *"x86"* ]]; then
-			extra_args=("-Dasm=disabled")
-		fi
+		[ "${TARGET_OS:-}" == "android" ] && [[ "$TARGET_ARCH" == *"x86"* ]] && extra_args=("-Dasm=disabled")
 		build_meson "${extra_args[@]}"
 		;;
 	libxvid)
 		BUILDING_DIR="$BUILDING_DIR/build/generic"
 		local extra_args=()
-		if [ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ]; then
-			extra_args+=("--disable-assembly")
-		fi
+		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("--disable-assembly")
 		build_autotools "${extra_args[@]}"
 		mv "$BUILDING_PREFIX/lib/xvidcore.a" "$BUILDING_PREFIX/lib/libxvidcore.a" || true
 		;;
 	libzmq) build_cmake -DCMAKE_SYSTEM_VERSION=6.1 -DPOLLER=epoll -DWITH_TLS=OFF -DBUILD_TESTS=OFF -DWITH_DOCS=OFF -DENABLE_DRAFTS=OFF -DBUILD_SHARED=OFF ;;
-	libzimg) build_autotools ;;
+	libdav1d) build_meson -Dtestdata_tests=false -Denable_docs=false ;;
 	*)
 		if [ -f "$BUILDING_DIR/meson.build" ]; then
 			build_meson
@@ -346,8 +294,9 @@ compile_linux() {
 	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/linux_x86_64"
 	local -x BUILD_ROOT="$TEMP_DIR/linux_x86_64"
-	rm -rf "$BUILD_ROOT" && mkdir -p "$BUILD_ROOT" && cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
-	mkdir -p "$PREFIX"
+	local -x LOGS_ROOT="$LOGS_DIR/linux_x86_64"
+	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
+	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x HOST="x86_64-linux-gnu"
 	local -x CFLAGS="-fPIC -O3 -I$PREFIX/include"
@@ -444,16 +393,23 @@ compile_linux() {
 
 	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
-		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES"
+		echo "--> Compilando $lib"
+		archivo_log="$LOGS_ROOT/$lib.log"
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
+			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
+			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
+			cat "$archivo_log" >&2
+			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
+			exit 1
+		fi
 	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
-	echo "==================== Compilación completada - Linux ====================="
-
 	echo "---- Tiempos de compilación por librería ----"
 	for i in "${!LIBS[@]}"; do
 		printf "%-20s : %d s\n" "${LIBS[$i]}" "${BUILD_TIMES[$i]}"
 	done
+	echo "==================== Compilación completada - Linux ====================="
 }
 
 compile_windows() {
@@ -462,9 +418,9 @@ compile_windows() {
 	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/windows_x86_64"
 	local -x BUILD_ROOT="$TEMP_DIR/windows_x86_64"
-	rm -rf "$BUILD_ROOT" && mkdir -p "$BUILD_ROOT" && cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
-	mkdir -p "$PREFIX"
-
+	local -x LOGS_ROOT="$LOGS_DIR/windows_x86_64"
+	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
+	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x CROSS_PREFIX="x86_64-w64-mingw32-"
@@ -567,14 +523,27 @@ compile_windows() {
 		"libsoxr"
 	)
 
+	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
-		build_library "$BUILD_ROOT/$lib" "$PREFIX"
+		echo "--> Compilando $lib"
+		archivo_log="$LOGS_ROOT/$lib.log"
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
+			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
+			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
+			cat "$archivo_log" >&2
+			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
+			exit 1
+		fi
 	done
 
 	cp "$SRC_ROOT/windows-pkg-config.sh" "$PREFIX/windows-pkg-config.sh"
 
-	echo "Archivos de dependencias precompiladas copiados a /mingw64/"
-	echo "============ Compilación completada - Windows ====================="
+	echo "Librerias compiladas y almacenadas en: $PREFIX"
+	echo "---- Tiempos de compilación por librería ----"
+	for i in "${!LIBS[@]}"; do
+		printf "%-20s : %d s\n" "${LIBS[$i]}" "${BUILD_TIMES[$i]}"
+	done
+	echo "============ Compilación completada - Windows ============"
 }
 
 compile_android() {
@@ -584,8 +553,9 @@ compile_android() {
 	local -x TARGET_ARCH="$ABI"
 	local -x PREFIX="$COMPILATION_DIR/android_$ABI"
 	local -x BUILD_ROOT="$TEMP_DIR/android_$ABI"
-	rm -rf "$BUILD_ROOT" && mkdir -p "$BUILD_ROOT" && cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
-	mkdir -p "$PREFIX"
+	local -x LOGS_ROOT="$LOGS_DIR/android_$ABI"
+	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
+	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
@@ -700,14 +670,27 @@ compile_android() {
 		"libsoxr"
 	)
 
+	local BUILD_TIMES=()
 	for lib in "${LIBS[@]}"; do
-		build_library "$BUILD_ROOT/$lib" "$PREFIX"
+		echo "--> Compilando $lib"
+		archivo_log="$LOGS_ROOT/$lib.log"
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$archivo_log" 2>&1; then
+			echo -e "\n❌ FALLO DETECTADO procesando a '$lib'. El script se detendrá." >&2
+			echo "--- INICIO DE CONTENIDO DE $archivo_log ---" >&2
+			cat "$archivo_log" >&2
+			echo "--- FIN DE CONTENIDO DE $archivo_log ---" >&2
+			exit 1
+		fi
 	done
 
 	# Clean up pc files on Android
 	find "$PREFIX/lib/pkgconfig" -name "*.pc" -type f -exec sed -i -e 's/-lpthread//g' -e 's/-lrt//g' -e 's/-lexecinfo//g' -e 's/libexecinfo\.a//g' -e 's/-lunwind//g' -e 's/libunwind\.a//g' {} + || true
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
+	echo "---- Tiempos de compilación por librería ----"
+	for i in "${!LIBS[@]}"; do
+		printf "%-20s : %d s\n" "${LIBS[$i]}" "${BUILD_TIMES[$i]}"
+	done
 	echo "==================== Compilación completada - Android $ABI ====================="
 }
 

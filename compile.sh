@@ -11,15 +11,15 @@ API_LEVEL=28
 TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
 echo "=== Preparando el entorno ==="
-rm -rf /dist/*
-mkdir -p /dist
-
-# Parche urgente para sdl2.pc (agrega -liconv a Libs en lugar de Libs.private)
 echo "Descargando código fuente de FFmpeg (versión: $FFMPEG_VERSION)..."
 TAR_URL="https://github.com/${FFMPEG_REPO}/archive/${FFMPEG_VERSION}.tar.gz"
 
-mkdir -p /app/ffmpeg
-cd /app/ffmpeg
+VIDRA_FFMPEG_DIR="/vidra/ffmpeg"
+VIDRA_TEMP="/vidra-tmp"
+VIDRA_BUILD_DIR="/dist"
+rm -rf "$VIDRA_FFMPEG_DIR" "$VIDRA_TEMP"
+mkdir -p "$VIDRA_FFMPEG_DIR" "$VIDRA_TEMP"
+cd "$VIDRA_FFMPEG_DIR"
 
 curl -sL "$TAR_URL" | tar xz --strip-components=1
 
@@ -36,13 +36,13 @@ build_linux() {
 	echo "=================================================="
 	echo " Compilando Linux (x86_64) - Estático"
 	echo "=================================================="
-	local -x LINUX_FFMPEG="/tmp/app/linux/ffmpeg"
-	rm -rf "$LINUX_FFMPEG" && mkdir -p "$LINUX_FFMPEG" && cp -r /app/ffmpeg/* "$LINUX_FFMPEG"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/linux_x86_64"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/linux_x86_64"
+	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
+	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
 	local LIBS_PREFIX="$COMPILATION_DIR/linux_x86_64"
 	local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-
-	cd $LINUX_FFMPEG
 
 	local feature_flags=(
 		"--enable-iconv"
@@ -122,6 +122,7 @@ build_linux() {
 		"--enable-libzvbi"
 	)
 
+	pushd $FFMPEG_DIR >/dev/null
 	./configure \
 		--prefix="$LIBS_PREFIX" \
 		--pkg-config-flags=--static \
@@ -131,29 +132,33 @@ build_linux() {
 		--disable-debug \
 		--disable-ffplay \
 		--disable-doc \
+		--extra-version=vidra-ffmpeg \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-static -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		"${feature_flags[@]}" || {
-		tail -n 100 ffbuild/config.log
+		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
+		cat ffbuild/config.log >&2
+		echo "--- FIN DE LOG DE CONFIGURACIÓN ---" >&2
 		exit 1
 	}
-
 	make -j"$(nproc)"
-
 	strip ffmpeg ffprobe
-
-	mkdir -p /dist/linux-x86_64
-	cp ffmpeg /dist/linux-x86_64/ffmpeg
-	cp ffprobe /dist/linux-x86_64/ffprobe
+	cp ffmpeg "$BUILD_DIR/ffmpeg"
+	cp ffprobe "$BUILD_DIR/ffprobe"
+	popd >/dev/null
+	echo "FFmpeg compilado y almacenado en: $BUILD_DIR"
+	echo "============ Compilación completada - Linux ============"
 }
 
 build_windows() {
 	echo "=================================================="
 	echo " Compilando Windows (x86_64-mingw32) - Estático"
 	echo "=================================================="
-	local -x WINDOWS_FFMPEG="/tmp/app/windows/ffmpeg"
-	rm -rf "$WINDOWS_FFMPEG" && mkdir -p "$WINDOWS_FFMPEG" && cp -r /app/ffmpeg/* "$WINDOWS_FFMPEG"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/windows_x86_64"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/windows_x86_64"
+	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
+	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
 	local LIBS_PREFIX="$COMPILATION_DIR/windows_x86_64"
 	local WIN_SYSROOT="/mingw64"
@@ -168,10 +173,6 @@ build_windows() {
 		echo "Error: windows-pkg-config.sh not found in $LIBS_PREFIX"
 		exit 1
 	fi
-
-	local -x EXTRA_LDFLAGS_COMPAT=""
-
-	cd $WINDOWS_FFMPEG
 
 	local feature_flags=(
 		"--enable-iconv"
@@ -251,8 +252,7 @@ build_windows() {
 		"--enable-libzimg"
 		"--enable-libzvbi"
 	)
-	local optflags="-O1"
-
+	pushd $FFMPEG_DIR >/dev/null
 	./configure \
 		--target-os=mingw32 \
 		--arch=x86_64 \
@@ -267,22 +267,24 @@ build_windows() {
 		--enable-static --disable-shared \
 		--disable-debug --disable-doc --disable-manpages --disable-htmlpages \
 		--disable-ffplay \
-		--optflags="$optflags" \
+		--extra-version=vidra-ffmpeg \
+		--optflags="-O1" \
 		--extra-cflags="-static -std=gnu11 -I$LIBS_PREFIX/include -I$WIN_SYSROOT/include -DCHROMAPRINT_NODLL -DKVZ_STATIC_LIB -DLIBTWOLAME_STATIC -DZMQ_STATIC -DAL_LIBTYPE_STATIC -DLIBSSH_STATIC -D_ISOC11_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DWIN32_LEAN_AND_MEAN -D__USE_MINGW_ANSI_STDIO=1 -D_POSIX_C_SOURCE=200112 -D_XOPEN_SOURCE=600 -DPIC" \
-		--extra-ldflags="$EXTRA_LDFLAGS_COMPAT -static -static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
+		--extra-ldflags="-static -static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -L$WIN_SYSROOT/lib -pthread" \
 		--extra-libs="-static-libgcc -static-libstdc++ -lgomp -lz -lws2_32 -lcrypt32 -liconv -lgdi32 -lbcrypt -liphlpapi -lmingwex -lstdc++ -lwinpthread -lharfbuzz -lfreetype -lrpcrt4 -lusp10 -lole32 -luuid -lavrt -lwinmm -lcfgmgr32" \
 		"${feature_flags[@]}" || {
-		tail -n 100 ffbuild/config.log
+		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
+		cat ffbuild/config.log >&2
+		echo "--- FIN DE LOG DE CONFIGURACIÓN ---" >&2
 		exit 1
 	}
-
 	make -j"$(nproc)"
-
 	${CROSS_PREFIX}strip ffmpeg.exe ffprobe.exe
-
-	mkdir -p /dist/windows_x86_64
-	cp ffmpeg.exe /dist/windows_x86_64/ffmpeg.exe
-	cp ffprobe.exe /dist/windows_x86_64/ffprobe.exe
+	cp ffmpeg.exe "$BUILD_DIR/ffmpeg.exe"
+	cp ffprobe.exe "$BUILD_DIR/ffprobe.exe"
+	popd >/dev/null
+	echo "FFmpeg compilado y almacenado en: $BUILD_DIR"
+	echo "============ Compilación completada - Windows ============"
 }
 
 build_android() {
@@ -290,8 +292,11 @@ build_android() {
 	echo "=================================================="
 	echo " Compilando Android: $ABI"
 	echo "=================================================="
-	local -x ANDROID_FFMPEG="/tmp/app/android/$ABI/ffmpeg"
-	rm -rf "$ANDROID_FFMPEG" && mkdir -p "$ANDROID_FFMPEG" && cp -r /app/ffmpeg/* "$ANDROID_FFMPEG"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/android_$ABI"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/android_$ABI"
+	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
+	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
+
 	local arch_extra_flags=()
 	local neon_flag=""
 	local optflags="-O3"
@@ -338,12 +343,6 @@ build_android() {
 	local PREFIX="$COMPILATION_DIR/android_$ABI"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
-
-	cd "$ANDROID_FFMPEG"
-	make distclean >/dev/null 2>&1 || true
-
-	# Parchear archivos .pc de pkg-config generados por CMake/Meson/Cargo que pueden contener dependencias de glibc inexistentes en Android (Bionic)
-	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec bash -c 'for f; do content=$(cat "$f"); content="${content//-l-pthread/}"; content="${content//-lpthread/}"; content="${content//-l-l:libunwind.a/}"; content="${content//-l:libunwind.a/}"; content="${content//libunwind.a/}"; content="${content//-lc++ / }"; content="${content%-lc++}"; content="${content//-lutil / }"; content="${content%-lutil}"; content="${content//-lrt / }"; content="${content%-lrt}"; content="${content//-l-l: / }"; content="${content//-l: / }"; content="${content%-l:}"; echo "$content" > "$f"; done' _ {} + 2>/dev/null || true
 
 	local feature_flags=(
 		"--enable-iconv"
@@ -426,6 +425,7 @@ build_android() {
 		"--enable-jni"
 	)
 
+	pushd "$FFMPEG_DIR" >/dev/null
 	./configure \
 		--prefix="$PREFIX" \
 		--target-os=android \
@@ -437,6 +437,7 @@ build_android() {
 		--ranlib="$RANLIB" \
 		--strip="$STRIP" \
 		--enable-cross-compile \
+		--extra-version=vidra-ffmpeg \
 		--pkg-config-flags="--static" \
 		--extra-cflags="-I$PREFIX/include" \
 		--extra-ldflags="-L$PREFIX/lib -Wl,--allow-multiple-definition" \
@@ -453,7 +454,9 @@ build_android() {
 		${neon_flag:+$neon_flag} \
 		"${arch_extra_flags[@]}" \
 		"${feature_flags[@]}" || {
-		tail -n 100 ffbuild/config.log
+		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
+		cat ffbuild/config.log >&2
+		echo "--- FIN DE LOG DE CONFIGURACIÓN ---" >&2
 		exit 1
 	}
 
@@ -467,14 +470,12 @@ build_android() {
 	fi
 
 	make -j"$(nproc)"
-
-	# Asegurar que el binario esté completamente desprovisto de símbolos de depuración
 	"${STRIP}" ffmpeg ffprobe || true
-
-	local OUT_DIR="/dist/android-$ABI"
-	mkdir -p "$OUT_DIR"
-	cp ffmpeg "$OUT_DIR/ffmpeg"
-	cp ffprobe "$OUT_DIR/ffprobe"
+	cp ffmpeg "$BUILD_DIR/ffmpeg"
+	cp ffprobe "$BUILD_DIR/ffprobe"
+	popd >/dev/null
+	echo "FFmpeg compilado y almacenado en: $BUILD_DIR"
+	echo "============ Compilación completada - Android $ABI ============"
 }
 
 # ==========================================
@@ -521,4 +522,4 @@ all)
 esac
 
 echo "=== Proceso completado exitosamente ==="
-echo "Los binarios están listos en /dist"
+echo "Los binarios están listos en $VIDRA_BUILD_DIR"

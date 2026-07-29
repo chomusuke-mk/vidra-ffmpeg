@@ -33,4 +33,14 @@ echo "Configurando fast_float para libplacebo"
 mkdir -p "$SRC_ROOT/libplacebo/3rdparty"
 mv "$SRC_ROOT/fast_float" "$SRC_ROOT/libplacebo/3rdparty/"
 
+echo "Configurando iconv"
+pushd "$SRC_ROOT/iconv" >/dev/null
+rm -f "configure.ac" "autogen.sh" "Makefile"
+popd >/dev/null
+
+echo "Configurando libtheora"
+pushd "$SRC_ROOT/libtheora" >/dev/null
+rm -f "autogen.sh"
+popd >/dev/null
+
 echo "================ Parches aplicados ==================="

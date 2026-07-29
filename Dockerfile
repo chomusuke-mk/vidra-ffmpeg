@@ -61,12 +61,12 @@ WORKDIR /vidra
 ARG TARGET_OS=all
 ARG TARGET_ARCH=all
 RUN --mount=type=cache,target=/downloads \
-    mkdir -p /downloads /source /compiled /vidra-tmp /vidra && \
+    mkdir -p /downloads /source /compiled /vidra-tmp /vidra-logs /vidra && \
     /docker-builder/download_deps.sh /downloads && \
     /docker-builder/extract_deps.sh /downloads /source && \
     /docker-builder/patch_deps.sh /docker-builder/patches /source && \
-    /docker-builder/build_libs.sh /source /compiled /vidra-tmp ${TARGET_OS} ${TARGET_ARCH} && \
-    rm -rf /source /docker-builder /vidra-tmp /vidra && \
+    /docker-builder/build_libs.sh /source /compiled /vidra-tmp /vidra-logs ${TARGET_OS} ${TARGET_ARCH} && \
+    rm -rf /source /docker-builder /vidra-tmp /vidra-logs /vidra && \
     mkdir -p /vidra
 
 ENV COMPILATION_DIR=/compiled
