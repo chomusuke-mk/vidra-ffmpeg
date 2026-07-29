@@ -1,5 +1,9 @@
-# all:all - Archivo .pc para copiar a directorio final
---- /dev/null
-+++ chromaprint/libchromaprint.pc
-@@ -0,0 +1,1 @@
+# ALL:ALL - Add private libraries to the pkg-config file
+--- chromaprint/libchromaprint.pc.cmake
++++ chromaprint/libchromaprint.pc.cmake
+@@ -8,5 +8,6 @@
+ URL: http://acoustid.org/chromaprint
+ Version: @PROJECT_VERSION@
+ Libs: -L${libdir} -lchromaprint
 +Libs.private: -lstdc++ -lm -lfftw3
+ Cflags: -I${includedir}

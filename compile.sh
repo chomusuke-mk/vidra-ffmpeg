@@ -68,7 +68,6 @@ build_linux() {
 		"--enable-amf"
 		"--enable-libaom"
 		"--enable-libaribb24"
-		"--enable-avisynth"
 		"--enable-chromaprint"
 		"--enable-libdav1d"
 		"--enable-libdavs2"
@@ -105,7 +104,6 @@ build_linux() {
 		"--enable-librav1e"
 		"--enable-librubberband"
 		"--disable-schannel"
-		"--enable-sdl2"
 		"--enable-libsnappy"
 		"--enable-libsrt"
 		"--enable-libsvtav1"
@@ -135,7 +133,7 @@ build_linux() {
 		--disable-doc \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-static -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
-		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic -liconv" \
+		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		"${feature_flags[@]}" || {
 		tail -n 100 ffbuild/config.log
 		exit 1
@@ -345,7 +343,7 @@ build_android() {
 	make distclean >/dev/null 2>&1 || true
 
 	# Parchear archivos .pc de pkg-config generados por CMake/Meson/Cargo que pueden contener dependencias de glibc inexistentes en Android (Bionic)
-	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec sh -c 'for f; do content=$(cat "$f"); content="${content//-l-pthread/}"; content="${content//-lpthread/}"; content="${content//-l-l:libunwind.a/}"; content="${content//-l:libunwind.a/}"; content="${content//libunwind.a/}"; content="${content//-lc++ / }"; content="${content%-lc++}"; content="${content//-lutil / }"; content="${content%-lutil}"; content="${content//-lrt / }"; content="${content%-lrt}"; echo "$content" > "$f"; done' _ {} + 2>/dev/null || true
+	find "$PREFIX/lib/pkgconfig" "$PREFIX/lib64/pkgconfig" -name "*.pc" -exec bash -c 'for f; do content=$(cat "$f"); content="${content//-l-pthread/}"; content="${content//-lpthread/}"; content="${content//-l-l:libunwind.a/}"; content="${content//-l:libunwind.a/}"; content="${content//libunwind.a/}"; content="${content//-lc++ / }"; content="${content%-lc++}"; content="${content//-lutil / }"; content="${content%-lutil}"; content="${content//-lrt / }"; content="${content%-lrt}"; content="${content//-l-l: / }"; content="${content//-l: / }"; content="${content%-l:}"; echo "$content" > "$f"; done' _ {} + 2>/dev/null || true
 
 	local feature_flags=(
 		"--enable-iconv"
@@ -356,7 +354,7 @@ build_android() {
 		"--enable-libharfbuzz"
 		"--enable-libfreetype"
 		"--enable-libfribidi"
-		"--enable-vulkan"
+		"--disable-vulkan"
 		"--disable-libshaderc"
 		"--enable-libvorbis"
 		"--enable-gmp"

@@ -131,3 +131,18 @@
  	m4 \
  	src \
  	$(proxy_dirs) \
+# Soporte i386
+--- libzvbi/src/misc.h
++++ libzvbi/src/misc.h
+@@ -53,4 +53,4 @@
+ #endif
+ 
+-#undef __i386__
++
+ #undef __i686__
+@@ -157,4 +157,4 @@
+ #define likely(expr) (expr)
+ #define unlikely(expr) (expr)
+-#undef __i386__
++
+ #undef __i686__

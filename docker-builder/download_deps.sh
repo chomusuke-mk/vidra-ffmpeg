@@ -132,4 +132,15 @@ download_if_missing "xlib" "https://gitlab.freedesktop.org/xorg/lib/libx11/-/arc
 download_if_missing "libpulse" "https://gitlab.freedesktop.org/pulseaudio/pulseaudio/-/archive/v17.0/pulseaudio-v17.0.tar.gz"
 download_if_missing "libdrm" "https://gitlab.freedesktop.org/mesa/libdrm/-/archive/libdrm-2.4.134/libdrm-libdrm-2.4.134.tar.gz"
 
+# Extra libs for libjxl
+download_if_missing "libjxl-testdata" "https://github.com/libjxl/testdata/archive/873045a9c42ed60721756e26e2a6b32e17415205.tar.gz"
+download_if_missing "libjxl-brotli" "https://github.com/google/brotli/archive/028fb5a23661f123017c060daa546b55cf4bde29.tar.gz"
+download_if_missing "libjxl-googletest" "https://github.com/google/googletest/archive/6910c9d9165801d8827d628cb72eb7ea9dd538c5.tar.gz"
+download_if_missing "libjxl-highway" "https://github.com/google/highway/archive/457c891775a7397bdb0376bb1031e6e027af1c48.tar.gz"
+download_if_missing "libjxl-sjpeg" "https://github.com/webmproject/sjpeg/archive/94e0df6d0f8b44228de5be0ff35efb9f946a13c9.tar.gz"
+download_if_missing "libjxl-skcms" "https://github.com/google/skcms/archive/96d9171c94b937a1b5f0293de7309ac16311b722.tar.gz"
+download_if_missing "libjxl-zlib" "https://github.com/madler/zlib/archive/51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf.tar.gz"
+download_if_missing "libjxl-libpng" "https://github.com/glennrp/libpng/archive/872555f4ba910252783af1507f9e7fe1653be252.tar.gz"
+download_if_missing "libjxl-libjpeg-turbo" "https://github.com/libjpeg-turbo/libjpeg-turbo/archive/8ecba3647edb6dd940463fedf38ca33a8e2a73d1.tar.gz"
+
 echo "================ Dependencias descargadas ==================="
