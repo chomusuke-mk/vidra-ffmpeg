@@ -3,4 +3,4 @@
 # Configuración de FFmpeg
 export FFMPEG_REPO="FFmpeg/FFmpeg"
 export FFMPEG_VERSION="n8.1.2"
-export VIDRA_FFMPEG_VERSION="n8.1.2.2"
+export VIDRA_FFMPEG_VERSION="n8.1.2.3"

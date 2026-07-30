@@ -122,7 +122,7 @@ jobs:
 
           ### 📦 Información del Motor
           - **Versión/Commit de FFmpeg Utilizado:** \`$FFMPEG_VERSION\`
-          - **Origen del Código Fuente:** [https://github.com/$FFMPEG_REPO]($FFMPEG_REPO)
+          - **Origen del Código Fuente:** [$FFMPEG_REPO](https://github.com/$FFMPEG_REPO)
           - **Fecha de Compilación:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           ### 🛠️ Detalles de los Ejecutables Publicados
 
