@@ -16,7 +16,7 @@ jobs:
       should_build: ${{ steps.check_release.outputs.should_build }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get FFmpeg Target Version
         id: determine_version
@@ -49,34 +49,62 @@ jobs:
             fi
           fi
 
-  build_and_release:
+  build:
     needs: check_version
     if: needs.check_version.outputs.should_build == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target_os: linux
+            target_arch: x86_64
+          - target_os: windows
+            target_arch: x86_64
+          - target_os: android
+            target_arch: arm64-v8a
+          - target_os: android
+            target_arch: armeabi-v7a
+          - target_os: android
+            target_arch: x86
+          - target_os: android
+            target_arch: x86_64
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Compilar FFmpeg (vía Docker)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Iniciando contenedor para compilar..."
-          docker compose run --rm ffmpeg-builder all all
+          echo "Iniciando contenedor para compilar ${{ matrix.target_os }} ${{ matrix.target_arch }}..."
+          docker compose run --rm ffmpeg-builder ${{ matrix.target_os }} ${{ matrix.target_arch }}
 
-      - name: Renombrar Assets y Generar Checksums
+      - name: Zip Assets
         run: |
           mkdir -p release_assets
+          zip -9 -j release_assets/ffmpeg-${{ matrix.target_os }}-${{ matrix.target_arch }}.zip dist/${{ matrix.target_os }}-${{ matrix.target_arch }}/*
 
-          # Copiar y renombrar los archivos binarios comprimiendo a zip
-          zip -9 -j release_assets/ffmpeg-android-arm64-v8a.zip   dist/android-arm64-v8a/*
-          zip -9 -j release_assets/ffmpeg-android-armeabi-v7a.zip dist/android-armeabi-v7a/*
-          zip -9 -j release_assets/ffmpeg-android-x86.zip         dist/android-x86/*
-          zip -9 -j release_assets/ffmpeg-android-x86_64.zip      dist/android-x86_64/*
-          zip -9 -j release_assets/ffmpeg-linux-x86_64.zip        dist/linux-x86_64/*
-          zip -9 -j release_assets/ffmpeg-windows-x86_64.zip      dist/windows-x86_64/*
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ffmpeg-${{ matrix.target_os }}-${{ matrix.target_arch }}
+          path: release_assets/ffmpeg-${{ matrix.target_os }}-${{ matrix.target_arch }}.zip
 
-          # Generar los archivos de sumas de verificación
+  release:
+    needs: [check_version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release_assets
+          merge-multiple: true
+
+      - name: Prepare Checksums
+        run: |
           cd release_assets
           sha256sum ffmpeg-* > SHA2-256SUMS
           sha512sum ffmpeg-* > SHA2-512SUMS
@@ -113,7 +141,7 @@ jobs:
           ⚠️ *Nota: Los archivos disponen de certificación de procedencia criptográfica de GitHub (Artifact Attestations). Puedes verificar su validez usando la extensión CLI de GitHub.*
           EOF
       - name: Certificar Procedencia de los Assets (Attestation de Verificación)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "release_assets/ffmpeg-*"
 
