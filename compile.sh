@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # --- Captura de Parámetros ---
 TARGET_OS=${1:-"all"}
@@ -7,7 +7,7 @@ TARGET_ARCH=${2:-"all"}
 
 # shellcheck disable=SC1091
 source /config.sh
-API_LEVEL=28
+API_LEVEL=24
 TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
 
 echo "=== Preparando el entorno ==="
@@ -36,12 +36,12 @@ build_linux() {
 	echo "=================================================="
 	echo " Compilando Linux (x86_64) - Estático"
 	echo "=================================================="
-	local -x FFMPEG_DIR="$VIDRA_TEMP/linux_x86_64"
-	local -x BUILD_DIR="$VIDRA_BUILD_DIR/linux_x86_64"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/linux-x86_64"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/linux-x86_64"
 	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
 	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
-	local LIBS_PREFIX="$COMPILATION_DIR/linux_x86_64"
+	local LIBS_PREFIX="$COMPILATION_DIR/linux-x86_64"
 	local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
 	local feature_flags=(
@@ -155,12 +155,12 @@ build_windows() {
 	echo "=================================================="
 	echo " Compilando Windows (x86_64-mingw32) - Estático"
 	echo "=================================================="
-	local -x FFMPEG_DIR="$VIDRA_TEMP/windows_x86_64"
-	local -x BUILD_DIR="$VIDRA_BUILD_DIR/windows_x86_64"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/windows-x86_64"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/windows-x86_64"
 	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
 	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
-	local LIBS_PREFIX="$COMPILATION_DIR/windows_x86_64"
+	local LIBS_PREFIX="$COMPILATION_DIR/windows-x86_64"
 	local WIN_SYSROOT="/mingw64"
 	local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
@@ -288,12 +288,12 @@ build_windows() {
 }
 
 build_android() {
-	local ABI=$1
+	local TARGET_ARCH=$1
 	echo "=================================================="
-	echo " Compilando Android: $ABI"
+	echo " Compilando Android: $TARGET_ARCH"
 	echo "=================================================="
-	local -x FFMPEG_DIR="$VIDRA_TEMP/android_$ABI"
-	local -x BUILD_DIR="$VIDRA_BUILD_DIR/android_$ABI"
+	local -x FFMPEG_DIR="$VIDRA_TEMP/android-$TARGET_ARCH"
+	local -x BUILD_DIR="$VIDRA_BUILD_DIR/android-$TARGET_ARCH"
 	rm -rf "$FFMPEG_DIR" "$BUILD_DIR" && mkdir -p "$FFMPEG_DIR" "$BUILD_DIR"
 	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
@@ -302,7 +302,7 @@ build_android() {
 	local optflags="-O3"
 	local TARGET_HOST="" ARCH="" CPU=""
 
-	case "$ABI" in
+	case "$TARGET_ARCH" in
 	arm64-v8a)
 		TARGET_HOST="aarch64-linux-android"
 		ARCH="aarch64"
@@ -340,7 +340,7 @@ build_android() {
 	local -x RANLIB="${TOOLCHAIN}/bin/llvm-ranlib"
 	local -x STRIP="${TOOLCHAIN}/bin/llvm-strip"
 
-	local PREFIX="$COMPILATION_DIR/android_$ABI"
+	local PREFIX="$COMPILATION_DIR/android-$TARGET_ARCH"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
@@ -470,12 +470,12 @@ build_android() {
 	fi
 
 	make -j"$(nproc)"
-	"${STRIP}" ffmpeg ffprobe || true
+	"${STRIP}" ffmpeg ffprobe
 	cp ffmpeg "$BUILD_DIR/ffmpeg"
 	cp ffprobe "$BUILD_DIR/ffprobe"
 	popd >/dev/null
 	echo "FFmpeg compilado y almacenado en: $BUILD_DIR"
-	echo "============ Compilación completada - Android $ABI ============"
+	echo "============ Compilación completada - Android $TARGET_ARCH ============"
 }
 
 # ==========================================

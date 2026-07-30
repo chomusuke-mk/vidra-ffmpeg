@@ -31,7 +31,7 @@ build_cmake() {
 	local toolchain_args=()
 	if [ -n "${TOOLCHAIN_FILE:-}" ] && [ -f "$TOOLCHAIN_FILE" ]; then
 		toolchain_args+=("-DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN_FILE")
-		if [ "${TARGET_OS:-}" == "android" ]; then
+		if [ "${TARGET_OS}" == "android" ]; then
 			toolchain_args+=("-DANDROID_ABI=$TARGET_ARCH" "-DANDROID_PLATFORM=android-$API_LEVEL")
 		fi
 	fi
@@ -64,7 +64,7 @@ build_autotools() {
 	if [ -f bootstrap ]; then ./bootstrap; fi
 	if [ -f autogen.sh ]; then ./autogen.sh; fi
 
-	if [ "${TARGET_OS:-}" == "android" ]; then
+	if [ "${TARGET_OS}" == "android" ]; then
 		# Android's pthread is in libc
 		if [ -f configure ]; then
 			sed -i 's/as_fn_error.*"Unable to link pthread functions".*/ax_pthread_ok=yes/g' configure
@@ -143,39 +143,39 @@ build_library() {
 	libx265)
 		BUILDING_DIR="$BUILDING_DIR/source"
 		local extra_args=()
-		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("-DENABLE_ASSEMBLY=OFF")
+		[ "${TARGET_OS}" == "android" ] && [ "$TARGET_ARCH" == "x86" ] && extra_args+=("-DENABLE_ASSEMBLY=OFF")
 		build_cmake -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "${extra_args[@]}"
 		;;
 	libx264)
 		local extra_args=("--enable-pic")
-		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("--disable-asm")
+		[ "${TARGET_OS}" == "android" ] && [ "$TARGET_ARCH" == "x86" ] && extra_args+=("--disable-asm")
 		build_autotools "${extra_args[@]}"
 		;;
 	lame) build_autotools --disable-decoder ;;
 	libuavs3d)
 		local extra_args=()
-		[ "${TARGET_OS:-}" == "android" ] && extra_args=("-DCMAKE_THREAD_LIBS_INIT=-lc" "-DCMAKE_HAVE_THREADS_LIBRARY=1" "-DCMAKE_USE_WIN32_THREADS_INIT=0" "-DCMAKE_USE_PTHREADS_INIT=1")
+		[ "${TARGET_OS}" == "android" ] && extra_args=("-DCMAKE_THREAD_LIBS_INIT=-lc" "-DCMAKE_HAVE_THREADS_LIBRARY=1" "-DCMAKE_USE_WIN32_THREADS_INIT=0" "-DCMAKE_USE_PTHREADS_INIT=1")
 		build_cmake -DCOMPILE_10BIT=0 "${extra_args[@]}"
 		;;
 	libvorbis) build_cmake -DOGG_LIBRARY="$BUILDING_PREFIX/lib/libogg.a" -DOGG_INCLUDE_DIR="$BUILDING_PREFIX/include" ;;
 	libxml2)
 		local extra_args=()
-		[ "${TARGET_OS:-}" != "linux" ] && extra_args+=("-DIconv_LIBRARY=$BUILDING_PREFIX/lib/libiconv.a" "-DIconv_INCLUDE_DIR=$BUILDING_PREFIX/include")
+		[ "${TARGET_OS}" != "linux" ] && extra_args+=("-DIconv_LIBRARY=$BUILDING_PREFIX/lib/libiconv.a" "-DIconv_INCLUDE_DIR=$BUILDING_PREFIX/include")
 		build_cmake "${extra_args[@]}"
 		;;
 	expat) build_cmake -DEXPAT_SHARED_LIBS=OFF -DEXPAT_BUILD_EXAMPLES=OFF -DEXPAT_BUILD_TESTS=OFF -DEXPAT_BUILD_DOCS=OFF ;;
 	libpulse)
 		local extra_args=()
-		[ "${TARGET_OS:-}" != "linux" ] && extra_args+=("-Dc_link_args=-L$BUILDING_PREFIX/lib -liconv")
+		[ "${TARGET_OS}" != "linux" ] && extra_args+=("-Dc_link_args=-L$BUILDING_PREFIX/lib -liconv")
 		build_meson -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false "${extra_args[@]}"
 		;;
 	libpng) build_cmake -DZLIB_LIBRARY="$BUILDING_PREFIX/lib/libz.a" -DZLIB_INCLUDE_DIR="$BUILDING_PREFIX/include" -DPNG_SHARED=OFF -DPNG_TESTS=OFF -DPNG_EXECUTABLES=OFF ;;
 	libvmaf) BUILDING_DIR="$BUILDING_DIR/libvmaf" build_meson -Denable_tests=false -Denable_docs=false ;;
 	libvpx)
 		local extra_args=()
-		if [ "${TARGET_OS:-}" == "windows" ]; then
+		if [ "${TARGET_OS}" == "windows" ]; then
 			extra_args+=("--target=x86_64-win64-gcc")
-		elif [ "${TARGET_OS:-}" == "android" ]; then
+		elif [ "${TARGET_OS}" == "android" ]; then
 			case "$TARGET_ARCH" in
 			arm64-v8a) extra_args+=("--target=arm64-android-gcc") ;;
 			armeabi-v7a) extra_args+=("--target=armv7-android-gcc") ;;
@@ -204,9 +204,9 @@ build_library() {
 				local -x CXXFLAGS_x86_64_pc_windows_gnu="${CXXFLAGS}"
 				local -x CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER="${CC}"
 				unset CC CXX AR RANLIB RC CFLAGS CXXFLAGS LDFLAGS HOST
-			elif [ "${TARGET_OS:-}" == "android" ]; then
+			elif [ "${TARGET_OS}" == "android" ]; then
 				local RUST_TARGET=""
-				case "$ABI" in
+				case "$TARGET_ARCH" in
 				arm64-v8a) RUST_TARGET="aarch64-linux-android" ;;
 				armeabi-v7a) RUST_TARGET="armv7-linux-androideabi" ;;
 				x86) RUST_TARGET="i686-linux-android" ;;
@@ -229,7 +229,7 @@ build_library() {
 		;;
 	libopenh264)
 		local args=("PREFIX=$BUILDING_PREFIX" "INCLUDE_PREFIX=$BUILDING_PREFIX/include")
-		if [ "${TARGET_OS:-}" == "android" ]; then
+		if [ "${TARGET_OS}" == "android" ]; then
 			args+=("OS=android" "NDKROOT=$ANDROID_NDK_HOME" "TARGET=android-$API_LEVEL" "NDKLEVEL=$API_LEVEL")
 			if [ "$TARGET_ARCH" == "arm64-v8a" ]; then
 				args+=("ARCH=arm64")
@@ -240,7 +240,7 @@ build_library() {
 			elif [ "$TARGET_ARCH" == "x86_64" ]; then
 				args+=("ARCH=x86_64")
 			fi
-		elif [ "${TARGET_OS:-}" == "windows" ]; then
+		elif [ "${TARGET_OS}" == "windows" ]; then
 			args+=("OS=mingw_nt" "ARCH=$TARGET_ARCH" "CC=${CC}" "CXX=${CXX}" "AR=${AR}")
 		fi
 		build_make libraries "${args[@]}"
@@ -274,18 +274,18 @@ build_library() {
 	libvvenc)
 		local extra_args=()
 		[ "${TARGET_OS}" == "windows" ] && extra_args+=("-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF" "-DVVENC_ENABLE_LTO=OFF")
-		[ "${TARGET_OS}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("-DVVENC_ENABLE_X86_SIMD=OFF")
+		[ "${TARGET_OS}" == "android" ] && [ "$TARGET_ARCH" == "x86" ] && extra_args+=("-DVVENC_ENABLE_X86_SIMD=OFF")
 		build_cmake "${extra_args[@]}" -DBUILD_SHARED_LIBS=OFF -DVVENC_ENABLE_WERROR=OFF
 		;;
 	libass)
 		local extra_args=()
-		[ "${TARGET_OS:-}" == "android" ] && [[ "$TARGET_ARCH" == *"x86"* ]] && extra_args=("-Dasm=disabled")
+		[ "${TARGET_OS}" == "android" ] && [[ "$TARGET_ARCH" == *"x86"* ]] && extra_args=("-Dasm=disabled")
 		build_meson "${extra_args[@]}"
 		;;
 	libxvid)
 		BUILDING_DIR="$BUILDING_DIR/build/generic"
 		local extra_args=()
-		[ "${TARGET_OS:-}" == "android" ] && [ "$ABI" == "x86" ] && extra_args+=("--disable-assembly")
+		[ "${TARGET_OS}" == "android" ] && [ "$TARGET_ARCH" == "x86" ] && extra_args+=("--disable-assembly")
 		build_autotools "${extra_args[@]}"
 		mv "$BUILDING_PREFIX/lib/xvidcore.a" "$BUILDING_PREFIX/lib/libxvidcore.a" || true
 		;;
@@ -319,9 +319,9 @@ compile_linux() {
 	echo "==================== Compilando librerías - Linux ====================="
 	local -x TARGET_OS="linux"
 	local -x TARGET_ARCH="x86_64"
-	local -x PREFIX="$COMPILATION_DIR/linux_x86_64"
-	local -x BUILD_ROOT="$TEMP_DIR/linux_x86_64"
-	local -x LOGS_ROOT="$LOGS_DIR/linux_x86_64"
+	local -x PREFIX="$COMPILATION_DIR/linux-x86_64"
+	local -x BUILD_ROOT="$TEMP_DIR/linux-x86_64"
+	local -x LOGS_ROOT="$LOGS_DIR/linux-x86_64"
 	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
 	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
@@ -440,9 +440,9 @@ compile_windows() {
 	echo "==================== Compilando librerías - Windows ====================="
 	local -x TARGET_OS="windows"
 	local -x TARGET_ARCH="x86_64"
-	local -x PREFIX="$COMPILATION_DIR/windows_x86_64"
-	local -x BUILD_ROOT="$TEMP_DIR/windows_x86_64"
-	local -x LOGS_ROOT="$LOGS_DIR/windows_x86_64"
+	local -x PREFIX="$COMPILATION_DIR/windows-x86_64"
+	local -x BUILD_ROOT="$TEMP_DIR/windows-x86_64"
+	local -x LOGS_ROOT="$LOGS_DIR/windows-x86_64"
 	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
 	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
@@ -568,13 +568,12 @@ compile_windows() {
 }
 
 compile_android() {
-	local ABI="$1"
-	echo "==================== Compilando librerías - Android $ABI ====================="
+	local -x TARGET_ARCH="$1"
+	echo "==================== Compilando librerías - Android $TARGET_ARCH ====================="
 	local -x TARGET_OS="android"
-	local -x TARGET_ARCH="$ABI"
-	local -x PREFIX="$COMPILATION_DIR/android_$ABI"
-	local -x BUILD_ROOT="$TEMP_DIR/android_$ABI"
-	local -x LOGS_ROOT="$LOGS_DIR/android_$ABI"
+	local -x PREFIX="$COMPILATION_DIR/android-$TARGET_ARCH"
+	local -x BUILD_ROOT="$TEMP_DIR/android-$TARGET_ARCH"
+	local -x LOGS_ROOT="$LOGS_DIR/android-$TARGET_ARCH"
 	rm -rf "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT" && mkdir -p "$BUILD_ROOT" "$PREFIX" "$LOGS_ROOT"
 	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 
@@ -583,7 +582,7 @@ compile_android() {
 	local -x PKG_CONFIG_SYSROOT_DIR="/"
 
 	local HOST
-	case "$ABI" in
+	case "$TARGET_ARCH" in
 	arm64-v8a) HOST="aarch64-linux-android" ;;
 	armeabi-v7a) HOST="armv7a-linux-androideabi" ;;
 	x86) HOST="i686-linux-android" ;;
@@ -596,7 +595,7 @@ compile_android() {
 	local -x RANLIB="$TOOLCHAIN/bin/llvm-ranlib"
 	local -x STRIP="$TOOLCHAIN/bin/llvm-strip"
 	local -x NM="$TOOLCHAIN/bin/llvm-nm"
-	if [ "$ABI" = "armeabi-v7a" ] || [ "$ABI" = "arm64-v8a" ] || [ "$ABI" = "arm-v8a" ]; then
+	if [ "$TARGET_ARCH" = "armeabi-v7a" ] || [ "$TARGET_ARCH" = "arm64-v8a" ]; then
 		local -x AS="$CC"
 		local -x ASFLAGS="-c"
 	fi
@@ -606,13 +605,13 @@ compile_android() {
 	local -x CXXFLAGS="-fPIE -fPIC -O3 -I$PREFIX/include"
 	local -x LDFLAGS="-fPIE -pie -L$PREFIX/lib"
 
-	if [ "$ABI" = "x86" ]; then
+	if [ "$TARGET_ARCH" = "x86" ]; then
 		CFLAGS="-fPIE -fPIC -O1 -I$PREFIX/include"
 		CXXFLAGS="-fPIE -fPIC -O1 -I$PREFIX/include"
 	fi
 
 	local TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-	local MESON_CROSS_FILE="$BUILD_ROOT/android-${ABI}-meson-cross.txt"
+	local MESON_CROSS_FILE="$BUILD_ROOT/android-${TARGET_ARCH}-meson-cross.txt"
 
 	local LIBS=(
 		"libudfread"
@@ -709,7 +708,7 @@ compile_android() {
 	for i in "${!LIBS[@]}"; do
 		printf "%-20s : %d s\n" "${LIBS[$i]}" "${BUILD_TIMES[$i]}"
 	done
-	echo "==================== Compilación completada - Android $ABI ====================="
+	echo "==================== Compilación completada - Android $TARGET_ARCH ====================="
 }
 
 echo ">> Compilación seleccionada: SO=[$TARGET_OS] | Arquitectura=[$TARGET_ARCH]"
@@ -723,9 +722,10 @@ windows)
 	;;
 android)
 	if [ "$TARGET_ARCH" == "all" ]; then
-		for ABI in arm64-v8a armeabi-v7a x86 x86_64; do
-			compile_android "$ABI"
-		done
+		compile_android "arm64-v8a"
+		compile_android "armeabi-v7a"
+		compile_android "x86"
+		compile_android "x86_64"
 	else
 		compile_android "$TARGET_ARCH"
 	fi
@@ -733,9 +733,10 @@ android)
 all)
 	compile_linux
 	compile_windows
-	for ABI in arm64-v8a armeabi-v7a x86 x86_64; do
-		compile_android "$ABI"
-	done
+	compile_android "arm64-v8a"
+	compile_android "armeabi-v7a"
+	compile_android "x86"
+	compile_android "x86_64"
 	;;
 *)
 	echo "Sistema operativo objetivo desconocido: $TARGET_OS"

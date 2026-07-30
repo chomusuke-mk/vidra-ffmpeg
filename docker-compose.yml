@@ -11,4 +11,4 @@ services:
       - ./dist:/dist
       - ./config.sh:/config.sh:ro
       - ./compile.sh:/compile.sh:ro
-    entrypoint: ["/compile.sh", "android", "x86"]
+    entrypoint: ["/compile.sh"]

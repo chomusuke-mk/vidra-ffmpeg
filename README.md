@@ -20,14 +20,25 @@ docker compose --progress=plain build
 ## Para compilar FFmpeg y FFprobe
 
 ```sh
-docker compose run --rm vidra-ffmpeg
+docker compose run --rm vidra-ffmpeg OS ARCH
 ```
 
-## Supported architectures
+### Supported architectures
 
-linux x86_64
-windows x86_64
-android arm64-v8a
-android armeabi-v7a
-android x86
-android x86_64
+| OS      | ARCH        |
+| ------- | ----------- |
+| linux   | x86_64      |
+| windows | x86_64      |
+| android | arm64-v8a   |
+| android | armeabi-v7a |
+| android | x86         |
+| android | x86_64      |
+
+## Archivos compilados
+
+dist/linux-x86_64/ffmpeg ffprobe
+dist/windows-x86_64/ffmpeg.exe ffprobe.exe
+dist/android-arm64-v8a/ffmpeg ffprobe
+dist/android-armeabi-v7a/ffmpeg ffprobe
+dist/android-x86/ffmpeg ffprobe
+dist/android-x86_64/ffmpeg ffprobe
