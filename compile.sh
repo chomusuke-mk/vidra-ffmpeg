@@ -123,23 +123,25 @@ build_linux() {
 	)
 
 	pushd $FFMPEG_DIR >/dev/null
+	
 	./configure \
 		--prefix="$LIBS_PREFIX" \
 		--pkg-config-flags=--static \
 		--enable-gpl \
 		--enable-version3 \
-		--enable-static --disable-shared \
+		--enable-static \
+		--disable-shared \
 		--disable-debug \
 		--disable-ffplay \
 		--disable-doc \
 		--extra-version=vidra-ffmpeg \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
-		--extra-ldflags="-static -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
+		--extra-ldflags="-static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		"${feature_flags[@]}" || {
-		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
-		cat ffbuild/config.log >&2
-		echo "--- FIN DE LOG DE CONFIGURACIÓN ---" >&2
+		echo "--- ERROR: Falló ./configure ---" >&2
+		cp ffbuild/config.log /dist/config.log || true
+		echo "Se copió config.log a /dist/config.log para depuración." >&2
 		exit 1
 	}
 	make -j"$(nproc)"

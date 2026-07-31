@@ -42,3 +42,9 @@ dist/android-arm64-v8a/ffmpeg ffprobe
 dist/android-armeabi-v7a/ffmpeg ffprobe
 dist/android-x86/ffmpeg ffprobe
 dist/android-x86_64/ffmpeg ffprobe
+
+## Testing
+
+```sh
+python3 test_ffmpeg.py ./dist/linux-x86_64/ffmpeg ./temp/ffmpeg_test
+```

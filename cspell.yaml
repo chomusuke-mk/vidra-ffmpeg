@@ -4,27 +4,38 @@ ignorePaths:
   - "**/*.patch"
   - Dockerfile
 words:
+  - aevalsrc
   - androideabi
+  - aresample
   - armeabi
   - armv
   - chomusuke
   - colorspace
   - dxva
+  - ffnvcodec
+  - fontcolor
   - fontconfig
   - freetype
   - fribidi
   - harfbuzz
+  - hwaccel
   - javiermk
+  - lavfi
   - lgcc
+  - libaom
   - libass
   - libdav
+  - libfreetype
   - libmp
   - libopenjpeg
+  - libopus
   - libsnappy
   - libsoxr
   - libssh
   - libsvtav
   - libva
+  - libvidstab
+  - libvorbis
   - libvpl
   - libvpx
   - libwebp
@@ -33,15 +44,21 @@ words:
   - msvcrt
   - nvcodec
   - NVDEC
+  - nvenc
   - NVENC
   - opencl
   - openssl
   - patreon
   - resampler
   - schannel
+  - soxr
+  - svtav
   - syms
+  - testsrc
+  - ultrafast
   - vaapi
   - vidra
+  - vidstabdetect
   - vulkan
   - windres
   - zimg

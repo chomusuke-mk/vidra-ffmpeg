@@ -290,7 +290,16 @@ build_library() {
 		mv "$BUILDING_PREFIX/lib/xvidcore.a" "$BUILDING_PREFIX/lib/libxvidcore.a" || true
 		;;
 	libzmq) build_cmake -DCMAKE_SYSTEM_VERSION=6.1 -DPOLLER=epoll -DWITH_TLS=OFF -DBUILD_TESTS=OFF -DWITH_DOCS=OFF -DENABLE_DRAFTS=OFF -DBUILD_SHARED=OFF ;;
+	libva) build_meson -Ddriverdir=/usr/lib/x86_64-linux-gnu/dri ;;
 	libdav1d) build_meson -Dtestdata_tests=false -Denable_docs=false ;;
+	xlib_deps)
+		cp /usr/lib/x86_64-linux-gnu/libXv.a "$BUILDING_PREFIX/lib/" || true
+		cp /usr/lib/x86_64-linux-gnu/libXext.a "$BUILDING_PREFIX/lib/" || true
+		cp /usr/lib/x86_64-linux-gnu/libxcb.a "$BUILDING_PREFIX/lib/" || true
+		cp /usr/lib/x86_64-linux-gnu/libXau.a "$BUILDING_PREFIX/lib/" || true
+		cp /usr/lib/x86_64-linux-gnu/libXdmcp.a "$BUILDING_PREFIX/lib/" || true
+		cp /usr/lib/x86_64-linux-gnu/libXfixes.a "$BUILDING_PREFIX/lib/" || true
+		;;
 	*)
 		if [ -f "$BUILDING_DIR/meson.build" ]; then
 			build_meson
@@ -414,6 +423,7 @@ compile_linux() {
 		"libsoxr"
 		"libxcb"
 		"xlib"
+		"xlib_deps"
 		"libpulse"
 		"libdrm"
 	)
@@ -426,6 +436,15 @@ compile_linux() {
 		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
+	done
+
+	find "$PREFIX/lib" -name "*.so*" -delete || true
+	for a_file in "$PREFIX/lib"/*.a; do
+		libname=$(basename "$a_file" .a)
+		if [ "$libname" = "libgmp" ] || [ "$libname" = "libz" ] || [ "$libname" = "libzstd" ] || [ "$libname" = "liblzma" ] || [ "$libname" = "libxml2" ]; then
+			continue
+		fi
+		rm -f "/usr/lib/x86_64-linux-gnu/${libname}.so"* || true
 	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
@@ -556,6 +575,10 @@ compile_windows() {
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
 	done
+
+	find "$PREFIX/lib" -name "*.dll.a" -delete || true
+	find "$PREFIX/lib" -name "*.dll" -delete || true
+	find "$PREFIX/lib" -name "*.so*" -delete || true
 
 	cp "$SRC_ROOT/windows-pkg-config.sh" "$PREFIX/windows-pkg-config.sh"
 
@@ -699,6 +722,9 @@ compile_android() {
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
 	done
+
+	# Delete any accidentally generated shared libraries
+	find "$PREFIX/lib" -name "*.so*" -delete || true
 
 	# Clean up pc files on Android
 	find "$PREFIX/lib/pkgconfig" -name "*.pc" -type f -exec sed -i -e 's/-lpthread//g' -e 's/-l-pthread//g' -e 's/-pthread//g' -e 's/-lrt//g' -e 's/-lexecinfo//g' -e 's/libexecinfo\.a//g' -e 's/-lunwind//g' -e 's/libunwind\.a//g' -e 's/-l: //g' -e 's/-l-ldl//g' {} + || true

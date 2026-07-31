@@ -51,7 +51,7 @@ download_if_missing "vulkan-headers" "https://github.com/KhronosGroup/Vulkan-Hea
 download_if_missing "vulkan-loader" "https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz"
 download_if_missing "opencl-headers" "https://github.com/KhronosGroup/OpenCL-Headers/archive/refs/tags/v2026.05.29.tar.gz"
 download_if_missing "opencl-icd-loader" "https://github.com/KhronosGroup/OpenCL-ICD-Loader/archive/refs/tags/v2026.05.29.tar.gz"
-download_if_missing "nv-codec-headers" "https://github.com/FFmpeg/nv-codec-headers/releases/download/n13.1.15.0/nv-codec-headers-13.1.15.0.tar.gz"
+download_if_missing "nv-codec-headers" "https://github.com/FFmpeg/nv-codec-headers/releases/download/n13.0.19.1/nv-codec-headers-13.0.19.1.tar.gz"
 # Libs
 download_if_missing "iconv" "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.19.tar.gz"
 download_if_missing "zlib" "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
