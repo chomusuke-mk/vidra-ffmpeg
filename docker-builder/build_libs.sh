@@ -775,12 +775,12 @@ android)
 	fi
 	;;
 all)
-	compile_linux
 	compile_windows
 	compile_android "arm64-v8a"
 	compile_android "armeabi-v7a"
 	compile_android "x86"
 	compile_android "x86_64"
+	compile_linux
 	;;
 *)
 	echo "Sistema operativo objetivo desconocido: $TARGET_OS"
