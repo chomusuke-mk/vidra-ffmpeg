@@ -123,7 +123,7 @@ build_linux() {
 	)
 
 	pushd $FFMPEG_DIR >/dev/null
-	
+
 	./configure \
 		--prefix="$LIBS_PREFIX" \
 		--pkg-config-flags=--static \
@@ -139,9 +139,9 @@ build_linux() {
 		--extra-ldflags="-static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		"${feature_flags[@]}" || {
-		echo "--- ERROR: Falló ./configure ---" >&2
-		cp ffbuild/config.log /dist/config.log || true
-		echo "Se copió config.log a /dist/config.log para depuración." >&2
+		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
+		cat ffbuild/config.log >&2
+		echo "--- FIN DE LOG DE CONFIGURACIÓN ---" >&2
 		exit 1
 	}
 	make -j"$(nproc)"
@@ -355,14 +355,14 @@ build_android() {
 		"--enable-libharfbuzz"
 		"--enable-libfreetype"
 		"--enable-libfribidi"
-		"--disable-vulkan"
+		"--enable-vulkan"
 		"--disable-libshaderc"
 		"--enable-libvorbis"
 		"--enable-gmp"
 		"--enable-lzma"
 		"--enable-liblcevc-dec"
 		"--disable-opencl"
-		"--enable-amf"
+		"--disable-amf"
 		"--enable-libaom"
 		"--enable-libaribb24"
 		"--enable-avisynth"
@@ -443,7 +443,7 @@ build_android() {
 		--pkg-config-flags="--static" \
 		--extra-cflags="-I$PREFIX/include" \
 		--extra-ldflags="-L$PREFIX/lib -Wl,--allow-multiple-definition" \
-		--extra-libs="-lm -Wl,-Bstatic -lc++_static -lc++abi -lunwind -Wl,-Bdynamic -latomic" \
+		--extra-libs="-lm -Wl,-Bstatic -lc++_static -lc++abi -lunwind -lomp -Wl,-Bdynamic -latomic" \
 		--enable-static \
 		--disable-shared \
 		--enable-gpl \

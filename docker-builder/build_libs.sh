@@ -135,6 +135,28 @@ build_library() {
 	libsndfile) build_cmake -DENABLE_EXTERNAL_LIBS=OFF ;;
 	libshaderc) build_cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON ;;
 	libsrt) build_cmake -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DENABLE_TESTING=OFF -DENABLE_UNITTESTS=OFF -DUSE_STATIC_LIBSTDCXX=ON ;;
+	vulkan-headers)
+		local extra_args=()
+		if [ "$TARGET_OS" = "linux" ]; then
+			extra_args+=("-DCMAKE_INSTALL_SYSCONFDIR=/etc")
+		fi
+		build_cmake "${extra_args[@]}"
+		if [ "$TARGET_OS" = "android" ]; then
+			mkdir -p "$BUILDING_PREFIX/lib/pkgconfig"
+			cat <<EOF >"$BUILDING_PREFIX/lib/pkgconfig/vulkan.pc"
+prefix=$BUILDING_PREFIX
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: Vulkan
+Description: Vulkan Loader (Android NDK)
+Version: 1.3.296
+Libs: -L\${libdir} -lvulkan
+Cflags: -I\${includedir}
+EOF
+		fi
+		;;
 	librist)
 		local extra_args=()
 		[ "$TARGET_OS" == "windows" ] && extra_args+=("-Dhave_mingw_pthreads=true")
@@ -576,10 +598,6 @@ compile_windows() {
 		CURRENT_LOG_FILE=""
 	done
 
-	find "$PREFIX/lib" -name "*.dll.a" -delete || true
-	find "$PREFIX/lib" -name "*.dll" -delete || true
-	find "$PREFIX/lib" -name "*.so*" -delete || true
-
 	cp "$SRC_ROOT/windows-pkg-config.sh" "$PREFIX/windows-pkg-config.sh"
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
@@ -660,7 +678,7 @@ compile_android() {
 		"gmp"
 		"lzma"
 		"liblcevc"
-		"amf"
+		"vulkan-headers"
 		"libaom"
 		"libaribb24"
 		"avisynth"

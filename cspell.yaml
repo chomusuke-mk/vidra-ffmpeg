@@ -5,60 +5,130 @@ ignorePaths:
   - Dockerfile
 words:
   - aevalsrc
+  - amfrt
+  - amrnb
+  - amrwb
   - androideabi
   - aresample
+  - ARIB
+  - aribb
   - armeabi
   - armv
+  - Bluray
   - chomusuke
+  - chromaprint
   - colorspace
+  - cuda
+  - davs
   - dxva
   - ffnvcodec
+  - ffplay
   - fontcolor
   - fontconfig
   - freetype
+  - frei
   - fribidi
   - harfbuzz
   - hwaccel
   - javiermk
+  - kvazaar
   - lavfi
+  - LCEVC
   - lgcc
+  - libamf
+  - libamfrt
   - libaom
+  - libaribb
+  - libaribcaption
   - libass
+  - libbluray
   - libdav
+  - libdavs
+  - libdrm
+  - libdvdnav
+  - libdvdread
   - libfreetype
+  - libfribidi
+  - libgme
+  - libharfbuzz
+  - libjxl
+  - libkvazaar
+  - liblcevc
   - libmp
+  - liboapv
+  - libopencore
+  - libopenh
   - libopenjpeg
+  - libopenmpt
   - libopus
+  - libplacebo
+  - libpulse
+  - librav
+  - librist
+  - librubberband
   - libsnappy
   - libsoxr
+  - libsrt
   - libssh
   - libsvtav
+  - libtheora
+  - libtwolame
+  - libuavs
   - libva
   - libvidstab
+  - libvmaf
   - libvorbis
   - libvpl
   - libvpx
+  - libvvenc
   - libwebp
   - libx
+  - libxavs
+  - libxcb
+  - libxvid
+  - libzimg
+  - libzmq
+  - libzvbi
+  - lzma
   - mediacodec
   - msvcrt
+  - muxer
   - nvcodec
+  - nvcuda
   - NVDEC
   - nvenc
   - NVENC
+  - oapv
+  - OAPV
+  - openal
   - opencl
+  - openh
+  - openjpeg
+  - openmpt
   - openssl
   - patreon
   - resampler
+  - rist
+  - RIST
+  - rubberband
   - schannel
   - soxr
+  - SPIR
   - svtav
   - syms
   - testsrc
+  - theora
+  - twolame
   - ultrafast
   - vaapi
   - vidra
   - vidstabdetect
   - vulkan
+  - vvenc
   - windres
+  - xavs
+  - xlib
+  - xvid
   - zimg
+  - zscale
+  - zvbi
