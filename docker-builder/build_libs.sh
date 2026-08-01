@@ -466,7 +466,7 @@ compile_linux() {
 		if [ "$libname" = "libgmp" ] || [ "$libname" = "libz" ] || [ "$libname" = "libzstd" ] || [ "$libname" = "liblzma" ] || [ "$libname" = "libxml2" ]; then
 			continue
 		fi
-		rm -f "/usr/lib/x86_64-linux-gnu/${libname}.so"* || true
+		rm -f "/usr/lib/x86_64-linux-gnu/${libname}.so" || true
 	done
 
 	echo "Librerias compiladas y almacenadas en: $PREFIX"
