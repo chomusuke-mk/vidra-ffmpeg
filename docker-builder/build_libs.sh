@@ -502,8 +502,8 @@ compile_windows() {
 	local -x LDFLAGS="-L$PREFIX/lib"
 
 	# Las cross-files son generadas por patch_deps.sh en $SRC_ROOT/mingw
-	TOOLCHAIN_FILE="$BUILD_ROOT/windows-toolchain.cmake"
-	MESON_CROSS_FILE="$BUILD_ROOT/windows-meson-cross.txt"
+	local -x TOOLCHAIN_FILE="$BUILD_ROOT/windows-toolchain.cmake"
+	local -x MESON_CROSS_FILE="$BUILD_ROOT/windows-meson-cross.txt"
 
 	local LIBS=(
 		"libsndfile"
@@ -651,8 +651,8 @@ compile_android() {
 		CXXFLAGS="-fPIE -fPIC -O1 -I$PREFIX/include"
 	fi
 
-	local TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
-	local MESON_CROSS_FILE="$BUILD_ROOT/android-${TARGET_ARCH}-meson-cross.txt"
+	local -x TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
+	local -x MESON_CROSS_FILE="$BUILD_ROOT/android-${TARGET_ARCH}-meson-cross.txt"
 
 	local LIBS=(
 		"libudfread"
