@@ -127,14 +127,20 @@ build_library() {
 		popd >/dev/null
 		;;
 	libdavs2 | libxavs2) BUILDING_DIR="$BUILDING_DIR/build/linux" build_autotools --disable-asm --extra-cflags="-Wno-incompatible-function-pointer-types" ;;
+	libaom)
+		local extra_args=()
+		[ "${TARGET_OS}" == "android" ] && [ "$TARGET_ARCH" == "armeabi-v7a" ] && extra_args+=("-DENABLE_NEON=OFF")
+		build_cmake "${extra_args[@]}"
+		;;
 	libbluray) build_meson -Denable_tools=false -Denable_devtools=false -Denable_examples=false ;;
 	libjxl) build_cmake -DJPEGXL_ENABLE_TOOLS=OFF -DJPEGXL_ENABLE_BENCHMARK=OFF -DJPEGXL_ENABLE_EXAMPLES=OFF -DJPEGXL_ENABLE_JNI=OFF -DJPEGXL_ENABLE_SKIA=OFF -DBUILD_TESTING=OFF -DSJPEG_ANDROID_NDK_PATH="${ANDROID_NDK_HOME}" ;;
 	libharfbuzz) build_meson -Dfreetype=enabled -Dtests=disabled -Ddocs=disabled -Dutilities=disabled -Dgpu=disabled -Dglib=disabled -Dgobject=disabled -Dicu=disabled ;;
 	libfreetype) build_meson -Dharfbuzz=disabled ;;
 	fontconfig) build_meson -Dtests=disabled -Dtools=disabled -Ddoc=disabled ;;
-	libsndfile) build_cmake -DENABLE_EXTERNAL_LIBS=OFF ;;
-	libshaderc) build_cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON ;;
-	libsrt) build_cmake -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DENABLE_APPS=OFF -DENABLE_TESTING=OFF -DENABLE_UNITTESTS=OFF -DUSE_STATIC_LIBSTDCXX=ON ;;
+	libshaderc)
+		build_cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSHADERC_SKIP_COPYRIGHT_CHECK=ON -DENABLE_EXCEPTIONS=ON -DSPIRV_TOOLS_BUILD_STATIC=ON -DBUILD_SHARED_LIBS=OFF
+		[ -f "$BUILDING_PREFIX/lib/pkgconfig/shaderc_combined.pc" ] && cp -f "$BUILDING_PREFIX/lib/pkgconfig/shaderc_combined.pc" "$BUILDING_PREFIX/lib/pkgconfig/shaderc.pc"
+		;;
 	vulkan-headers)
 		local extra_args=()
 		if [ "$TARGET_OS" = "linux" ]; then
@@ -192,7 +198,7 @@ EOF
 		build_meson -Ddatabase=simple -Dtests=false -Dman=false -Dx11=disabled -Ddoxygen=false "${extra_args[@]}"
 		;;
 	libpng) build_cmake -DZLIB_LIBRARY="$BUILDING_PREFIX/lib/libz.a" -DZLIB_INCLUDE_DIR="$BUILDING_PREFIX/include" -DPNG_SHARED=OFF -DPNG_TESTS=OFF -DPNG_EXECUTABLES=OFF ;;
-	libvmaf) BUILDING_DIR="$BUILDING_DIR/libvmaf" build_meson -Denable_tests=false -Denable_docs=false ;;
+	libvmaf) BUILDING_DIR="$BUILDING_DIR/libvmaf" build_meson -Denable_tests=false -Denable_docs=false -Dbuilt_in_models=true -Denable_float=true ;;
 	libvpx)
 		local extra_args=()
 		if [ "${TARGET_OS}" == "windows" ]; then
@@ -269,7 +275,20 @@ EOF
 		build_make install "${args[@]}"
 		;;
 	libtheora) build_autotools --disable-spec --disable-asm --disable-maintainer-mode ;;
-	libplacebo) build_meson -Ddemos=false ;;
+	libplacebo)
+		local extra_args=("-Ddemos=false" "-Dvulkan=enabled" "-Dvk-proc-addr=enabled" "-Dglslang=disabled")
+		if [ "${TARGET_OS}" == "android" ]; then
+			extra_args+=("-Dshaderc=disabled")
+		else
+			extra_args+=("-Dshaderc=enabled")
+		fi
+		build_meson "${extra_args[@]}"
+		if [ -f "$BUILDING_PREFIX/lib/pkgconfig/libplacebo.pc" ]; then
+			if ! grep -q -- "-lstdc++" "$BUILDING_PREFIX/lib/pkgconfig/libplacebo.pc"; then
+				echo "Libs.private: -lstdc++" >>"$BUILDING_PREFIX/lib/pkgconfig/libplacebo.pc"
+			fi
+		fi
+		;;
 	zlib)
 		build_cmake -DBUILD_SHARED_LIBS=OFF
 		if [ -f "$BUILDING_PREFIX/lib/libzs.a" ]; then
@@ -348,6 +367,7 @@ EOF
 
 compile_linux() {
 	echo "==================== Compilando librerías - Linux ====================="
+	unset TOOLCHAIN_FILE MESON_CROSS_FILE CROSS_PREFIX PKG_CONFIG_LIBDIR PKG_CONFIG_SYSROOT_DIR AS ASFLAGS RC LD NM ANDROID_NDK_ROOT ANDROID_ABI ANDROID_PLATFORM
 	local -x TARGET_OS="linux"
 	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/linux-x86_64"
@@ -357,6 +377,11 @@ compile_linux() {
 	cp -r "$SRC_ROOT/"* "$BUILD_ROOT"
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x HOST="x86_64-linux-gnu"
+	local -x CC="gcc"
+	local -x CXX="g++"
+	local -x AR="ar"
+	local -x RANLIB="ranlib"
+	local -x STRIP="strip"
 	local -x CFLAGS="-fPIC -O3 -I$PREFIX/include"
 	local -x CXXFLAGS="-fPIC -O3 -I$PREFIX/include"
 	local -x LDFLAGS="-L$PREFIX/lib"
@@ -410,6 +435,7 @@ compile_linux() {
 		"libjxl"
 		"lame"
 		"libopus"
+		"libshaderc"
 		"libplacebo"
 		"openssl"
 		"librist"
@@ -455,7 +481,11 @@ compile_linux() {
 		echo "--> Compilando $lib"
 		CURRENT_LIB="$lib"
 		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
-		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1; then
+			echo "❌ Error building $lib. Tail of $CURRENT_LOG_FILE:" >&2
+			tail -n 50 "$CURRENT_LOG_FILE" >&2
+			exit 1
+		fi
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
 	done
@@ -479,6 +509,7 @@ compile_linux() {
 
 compile_windows() {
 	echo "==================== Compilando librerías - Windows ====================="
+	unset TOOLCHAIN_FILE MESON_CROSS_FILE AS ASFLAGS LD NM PKG_CONFIG_SYSROOT_DIR ANDROID_NDK_ROOT ANDROID_ABI ANDROID_PLATFORM
 	local -x TARGET_OS="windows"
 	local -x TARGET_ARCH="x86_64"
 	local -x PREFIX="$COMPILATION_DIR/windows-x86_64"
@@ -554,6 +585,7 @@ compile_windows() {
 		"libjxl"
 		"lame"
 		"libopus"
+		"libshaderc"
 		"libplacebo"
 		"librist"
 		"openssl"
@@ -593,7 +625,11 @@ compile_windows() {
 		echo "--> Compilando $lib"
 		CURRENT_LIB="$lib"
 		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
-		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1; then
+			echo "❌ Error building $lib. Tail of $CURRENT_LOG_FILE:" >&2
+			tail -n 50 "$CURRENT_LOG_FILE" >&2
+			exit 1
+		fi
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
 	done
@@ -611,6 +647,7 @@ compile_windows() {
 compile_android() {
 	local -x TARGET_ARCH="$1"
 	echo "==================== Compilando librerías - Android $TARGET_ARCH ====================="
+	unset TOOLCHAIN_FILE MESON_CROSS_FILE CROSS_PREFIX RC AS ASFLAGS LD NM
 	local -x TARGET_OS="android"
 	local -x PREFIX="$COMPILATION_DIR/android-$TARGET_ARCH"
 	local -x BUILD_ROOT="$TEMP_DIR/android-$TARGET_ARCH"
@@ -705,7 +742,6 @@ compile_android() {
 		"libvpx"
 		"libwebp"
 		"libzmq"
-		"libvpl"
 		"openal"
 		"liboapv"
 		"opencore-amr"
@@ -736,7 +772,11 @@ compile_android() {
 		echo "--> Compilando $lib"
 		CURRENT_LIB="$lib"
 		CURRENT_LOG_FILE="$LOGS_ROOT/$lib.log"
-		build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1
+		if ! build_library "$BUILD_ROOT/$lib" "$PREFIX" "BUILD_TIMES" >"$CURRENT_LOG_FILE" 2>&1; then
+			echo "❌ Error building $lib. Tail of $CURRENT_LOG_FILE:" >&2
+			tail -n 50 "$CURRENT_LOG_FILE" >&2
+			exit 1
+		fi
 		CURRENT_LIB=""
 		CURRENT_LOG_FILE=""
 	done
@@ -759,28 +799,28 @@ echo ">> Compilación seleccionada: SO=[$TARGET_OS] | Arquitectura=[$TARGET_ARCH
 
 case "$TARGET_OS" in
 linux)
-	compile_linux
+	(compile_linux)
 	;;
 windows)
-	compile_windows
+	(compile_windows)
 	;;
 android)
 	if [ "$TARGET_ARCH" == "all" ]; then
-		compile_android "arm64-v8a"
-		compile_android "armeabi-v7a"
-		compile_android "x86"
-		compile_android "x86_64"
+		(compile_android "arm64-v8a")
+		(compile_android "armeabi-v7a")
+		(compile_android "x86")
+		(compile_android "x86_64")
 	else
-		compile_android "$TARGET_ARCH"
+		(compile_android "$TARGET_ARCH")
 	fi
 	;;
 all)
-	compile_windows
-	compile_android "arm64-v8a"
-	compile_android "armeabi-v7a"
-	compile_android "x86"
-	compile_android "x86_64"
-	compile_linux
+	(compile_windows)
+	(compile_android "arm64-v8a")
+	(compile_android "armeabi-v7a")
+	(compile_android "x86")
+	(compile_android "x86_64")
+	(compile_linux)
 	;;
 *)
 	echo "Sistema operativo objetivo desconocido: $TARGET_OS"

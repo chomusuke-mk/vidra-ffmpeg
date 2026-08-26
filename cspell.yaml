@@ -14,25 +14,57 @@ words:
   - aribb
   - armeabi
   - armv
+  - asplit
+  - bgra
+  - bitrate
+  - bitstream
+  - bluray
   - Bluray
+  - boxblur
+  - boxtype
+  - burnin
   - chomusuke
   - chromaprint
   - colorspace
   - cuda
   - davs
+  - Dbuilt
+  - deband
+  - Demux
+  - Demuxer
+  - demuxers
+  - Demuxing
+  - Denable
+  - Dglslang
+  - drawtext
+  - Dshaderc
+  - dvdnav
+  - dvdread
+  - Dvulkan
   - dxva
+  - ENDLIST
+  - EXTM
+  - faststart
   - ffnvcodec
   - ffplay
   - fontcolor
   - fontconfig
+  - Fontname
   - freetype
   - frei
   - fribidi
+  - gbrp
+  - gmtime
   - harfbuzz
   - hwaccel
   - javiermk
+  - jpegxl
+  - kbps
+  - keyint
   - kvazaar
+  - lanczos
   - lavfi
+  - lcevc
   - LCEVC
   - lgcc
   - libamf
@@ -41,9 +73,13 @@ words:
   - libaribb
   - libaribcaption
   - libass
+  - Libavfilter
   - libbluray
+  - libc
+  - libcuda
   - libdav
   - libdavs
+  - libdl
   - libdrm
   - libdvdnav
   - libdvdread
@@ -66,6 +102,7 @@ words:
   - librav
   - librist
   - librubberband
+  - libshaderc
   - libsnappy
   - libsoxr
   - libsrt
@@ -89,10 +126,28 @@ words:
   - libzimg
   - libzmq
   - libzvbi
+  - lowbr
   - lzma
+  - matroska
+  - Matroska
+  - mdat
   - mediacodec
+  - mobius
+  - moov
+  - movflags
+  - mpegts
   - msvcrt
+  - multitrack
+  - muxed
   - muxer
+  - muxers
+  - Muxers
+  - muxing
+  - nextgen
+  - nofast
+  - nofaststart
+  - ntsc
+  - NTSC
   - nvcodec
   - nvcuda
   - NVDEC
@@ -107,28 +162,48 @@ words:
   - openmpt
   - openssl
   - patreon
+  - posix
+  - realworld
   - resampler
   - rist
   - RIST
   - rubberband
   - schannel
+  - shaderc
+  - SIGFPE
+  - SIGSEGV
+  - smpte
+  - SMPTE
   - soxr
   - SPIR
   - svtav
   - syms
+  - TARGETDURATION
   - testsrc
   - theora
+  - tname
+  - tonemap
+  - tonemapping
   - twolame
+  - uavs
   - ultrafast
+  - ultratall
+  - ultrawide
+  - upscaler
   - vaapi
+  - vframes
   - vidra
   - vidstabdetect
+  - vmaf
   - vulkan
   - vvenc
   - windres
+  - WINEDEBUG
   - xavs
   - xlib
   - xvid
+  - youtube
+  - ytdlp
   - zimg
   - zscale
   - zvbi

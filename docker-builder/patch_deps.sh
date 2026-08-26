@@ -46,4 +46,9 @@ pushd "$SRC_ROOT/libtheora" >/dev/null
 rm -f "autogen.sh"
 popd >/dev/null
 
+echo "Sincronizando dependencias de libshaderc"
+pushd "$SRC_ROOT/libshaderc" >/dev/null
+python3 utils/git-sync-deps
+popd >/dev/null
+
 echo "================ Parches aplicados ==================="

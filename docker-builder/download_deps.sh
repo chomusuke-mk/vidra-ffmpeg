@@ -4,6 +4,17 @@ set -euo pipefail
 DOWNLOADS_DIR="$(realpath "$1")"
 mkdir -p "$DOWNLOADS_DIR"
 
+# Purge zero-sized, corrupt, or obsolete archives from cache
+find "$DOWNLOADS_DIR" -type f -size 0 -delete 2>/dev/null || true
+rm -f "$DOWNLOADS_DIR/libbluray.tar.gz" "$DOWNLOADS_DIR/fontconfig.tar.xz" "$DOWNLOADS_DIR/libva.tar.gz"
+for f in "$DOWNLOADS_DIR"/*.tar.*; do
+	[ -f "$f" ] || continue
+	if ! tar -tf "$f" >/dev/null 2>&1; then
+		echo "Purging corrupted archive from cache: $f"
+		rm -f "$f"
+	fi
+done
+
 download_if_missing() {
 	local name=$1
 	local url=$2
@@ -24,9 +35,37 @@ download_if_missing() {
 
 	local target="$DOWNLOADS_DIR/$filename"
 
-	if [ ! -f "$target" ]; then
+	if [ ! -s "$target" ] || ! tar -tf "$target" >/dev/null 2>&1; then
 		echo "Descargando $name..."
-		curl -L --fail --retry 5 --retry-delay 1 "$url" -o "${target}.tmp"
+		rm -f "$target" "${target}.tmp"
+
+		local downloaded=0
+		if [[ "$url" == *"code.videolan.org"* ]]; then
+			local repo_url="${url%%/-/archive/*}.git"
+			local tag_part="${url#*/-/archive/}"
+			local tag="${tag_part%%/*}"
+			echo "Cloning $repo_url (tag $tag) via git..."
+			local tmp_clone="/tmp/clone_${name}"
+			rm -rf "$tmp_clone"
+			mkdir -p "$tmp_clone/$name"
+			if git clone --depth 1 --branch "$tag" "$repo_url" "$tmp_clone/$name" 2>/dev/null; then
+				tar -czf "${target}.tmp" -C "$tmp_clone" "$name"
+				rm -rf "$tmp_clone"
+				downloaded=1
+			else
+				rm -rf "$tmp_clone"
+			fi
+		fi
+
+		if [ "$downloaded" -eq 0 ]; then
+			curl -L --fail --retry 5 --retry-delay 1 "$url" -o "${target}.tmp"
+		fi
+
+		if [ ! -s "${target}.tmp" ] || ! tar -tf "${target}.tmp" >/dev/null 2>&1; then
+			echo "Error: Archivo descargado para $name no es un tar válido desde $url" >&2
+			rm -f "${target}.tmp"
+			exit 1
+		fi
 		mv "${target}.tmp" "$target"
 	else
 		echo "$name ya descargado."
@@ -59,8 +98,7 @@ download_if_missing "libpng" "https://downloads.sourceforge.net/project/libpng/l
 download_if_missing "libxml2" "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz"
 download_if_missing "libvmaf" "https://github.com/Netflix/vmaf/archive/refs/tags/v3.2.0.tar.gz"
 download_if_missing "expat" "https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.gz"
-download_if_missing "fontconfig" "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.16.0.tar.xz"
-download_if_missing "libva" "https://github.com/intel/libva/archive/refs/tags/2.22.0.tar.gz"
+download_if_missing "fontconfig" "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/2.16.0/fontconfig-2.16.0.tar.gz"
 download_if_missing "libharfbuzz" "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz"
 download_if_missing "libfreetype" "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.gz"
 download_if_missing "libfribidi" "https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz"
@@ -84,7 +122,7 @@ download_if_missing "libkvazaar" "https://github.com/ultravideo/kvazaar/releases
 download_if_missing "libaribcaption" "https://github.com/xqq/libaribcaption/archive/refs/tags/v1.1.1.tar.gz"
 download_if_missing "libunibreak" "https://github.com/adah1972/libunibreak/releases/download/libunibreak_6_1/libunibreak-6.1.tar.gz"
 download_if_missing "libass" "https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.gz"
-download_if_missing "libbluray" "https://code.videolan.org/videolan/libbluray/-/archive/1.4.1/libbluray-1.4.1.tar.gz"
+download_if_missing "libbluray" "https://download.videolan.org/pub/videolan/libbluray/1.4.1/libbluray-1.4.1.tar.xz"
 download_if_missing "libjxl" "https://github.com/libjxl/libjxl/archive/refs/tags/v0.12.0.tar.gz"
 download_if_missing "lame" "https://downloads.sourceforge.net/project/lame/lame/4.0/lame-4.0.tar.gz"
 download_if_missing "libopus" "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz"

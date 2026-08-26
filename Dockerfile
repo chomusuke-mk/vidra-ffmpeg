@@ -5,7 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # 1. Instalar dependencias
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  build-essential git curl wget ca-certificates pkg-config yasm nasm unzip \
+  build-essential git curl wget ca-certificates pkg-config yasm nasm unzip xxd \
   autoconf automake libtool libtool-bin libltdl-dev cmake ninja-build \
   python3 python3-pip zstd gperf autopoint \
   libva-dev libdrm-dev libkrb5-dev gnupg clang llvm texinfo gettext \

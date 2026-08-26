@@ -11,6 +11,11 @@ echo "================ Extrayendo dependencias ==================="
 
 extract() {
 	local tarball=$1
+	if [ ! -s "$DOWNLOADS_DIR/$tarball" ]; then
+		echo "Saltando archivo vacío: $tarball"
+		rm -f "$DOWNLOADS_DIR/$tarball"
+		return 0
+	fi
 	echo "Extrayendo $tarball"
 	shopt -s extglob
 	name="${tarball#mingw-w64-x86_64-}"

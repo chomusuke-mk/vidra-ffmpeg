@@ -28,6 +28,42 @@ if [ ! -f "configure" ]; then
 	exit 1
 fi
 
+if [ -f "libavcodec/mediacodecenc.c" ]; then
+	echo "=== Optimizando MediaCodec encoder para Android (NV12 y bitrate default) ==="
+	python3 -c "
+import re
+with open('libavcodec/mediacodecenc.c', 'r') as f:
+    c = f.read()
+
+c, n1 = re.subn(
+    r'static const enum AVPixelFormat avc_pix_fmts\[\]\s*=\s*\{[^}]+\};',
+    '''static const enum AVPixelFormat avc_pix_fmts[] = {
+    AV_PIX_FMT_MEDIACODEC,
+    AV_PIX_FMT_NV12,
+    AV_PIX_FMT_NONE
+};''',
+    c
+)
+
+c, n2 = re.subn(
+    r'if\s*\(\s*avctx->bit_rate\s*\)\s*ff_AMediaFormat_setInt32\(\s*format\s*,\s*\"bitrate\"\s*,\s*avctx->bit_rate\s*\);',
+    '''if (avctx->bit_rate) {
+        ff_AMediaFormat_setInt32(format, \"bitrate\", avctx->bit_rate);
+    } else {
+        int64_t dbr = (int64_t)s->width * s->height * s->fps * 0.1;
+        if (dbr < 1000000) dbr = 2000000;
+        if (dbr > 8000000) dbr = 8000000;
+        ff_AMediaFormat_setInt32(format, \"bitrate\", (int32_t)dbr);
+    }''',
+    c
+)
+
+print(f'MediaCodec patch applied: pix_fmt={n1}, bitrate={n2}')
+with open('libavcodec/mediacodecenc.c', 'w') as f:
+    f.write(c)
+"
+fi
+
 # ==========================================
 # FUNCIONES DE COMPILACIÓN
 # ==========================================
@@ -42,6 +78,9 @@ build_linux() {
 	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
 	local LIBS_PREFIX="$COMPILATION_DIR/linux-x86_64"
+	if [ -f "$LIBS_PREFIX/lib/pkgconfig/shaderc_combined.pc" ]; then
+		cp -f "$LIBS_PREFIX/lib/pkgconfig/shaderc_combined.pc" "$LIBS_PREFIX/lib/pkgconfig/shaderc.pc"
+	fi
 	local -x PKG_CONFIG_PATH="$LIBS_PREFIX/lib/pkgconfig:$LIBS_PREFIX/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 
 	local feature_flags=(
@@ -137,6 +176,7 @@ build_linux() {
 		--extra-version=vidra-ffmpeg \
 		--extra-cflags="-I$LIBS_PREFIX/include" \
 		--extra-ldflags="-static-libgcc -static-libstdc++ -L$LIBS_PREFIX/lib -Wl,--allow-multiple-definition" \
+		--extra-ldexeflags="-static-libgcc -static-libstdc++" \
 		--extra-libs="-lstdc++ -lm -lpthread -ldl -latomic" \
 		"${feature_flags[@]}" || {
 		echo "--- INICIO DE LOG DE CONFIGURACIÓN ---" >&2
@@ -163,6 +203,9 @@ build_windows() {
 	cp -r "$VIDRA_FFMPEG_DIR/"* "$FFMPEG_DIR"
 
 	local LIBS_PREFIX="$COMPILATION_DIR/windows-x86_64"
+	if [ -f "$LIBS_PREFIX/lib/pkgconfig/shaderc_combined.pc" ]; then
+		cp -f "$LIBS_PREFIX/lib/pkgconfig/shaderc_combined.pc" "$LIBS_PREFIX/lib/pkgconfig/shaderc.pc"
+	fi
 	local WIN_SYSROOT="/mingw64"
 	local WIN_PKG_CONFIG_LIBDIR="$WIN_SYSROOT/lib/pkgconfig:$WIN_SYSROOT/share/pkgconfig:$LIBS_PREFIX/lib/pkgconfig"
 
@@ -346,6 +389,18 @@ build_android() {
 	local -x PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/lib64/pkgconfig"
 	local -x PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 
+	local mediacodec_disabled_encoders=""
+	case "$TARGET_ARCH" in
+	arm64-v8a | aarch64)
+		# Moderno (64-bit): Conserva h264_mediacodec y hevc_mediacodec (>90% presencia en hardware)
+		mediacodec_disabled_encoders="av1_mediacodec,vp9_mediacodec,vp8_mediacodec,mpeg4_mediacodec"
+		;;
+	armeabi-v7a | arm)
+		# Legacy/Económico (32-bit): Conserva únicamente h264_mediacodec (100% presencia)
+		mediacodec_disabled_encoders="hevc_mediacodec,av1_mediacodec,vp9_mediacodec,vp8_mediacodec,mpeg4_mediacodec"
+		;;
+	esac
+
 	local feature_flags=(
 		"--enable-iconv"
 		"--enable-zlib"
@@ -391,7 +446,7 @@ build_android() {
 		"--enable-libwebp"
 		"--enable-libzmq"
 		"--enable-lv2"
-		"--enable-libvpl"
+		"--disable-libvpl"
 		"--enable-openal"
 		"--enable-liboapv"
 		"--enable-libopencore-amrnb"
@@ -423,8 +478,10 @@ build_android() {
 		"--disable-libpulse"
 		"--disable-libdrm"
 		"--disable-schannel"
+		"--enable-openssl"
 		"--enable-mediacodec"
 		"--enable-jni"
+		"--disable-encoder=${mediacodec_disabled_encoders}"
 	)
 
 	pushd "$FFMPEG_DIR" >/dev/null
@@ -508,6 +565,16 @@ android)
 			;;
 		esac
 	fi
+	;;
+android-*)
+	arch="${TARGET_OS#android-}"
+	case "$arch" in
+	arm64-v8a | armeabi-v7a | x86 | x86_64) build_android "$arch" ;;
+	*)
+		echo "❌ Arquitectura de Android no válida: $arch"
+		exit 1
+		;;
+	esac
 	;;
 all)
 	build_linux
