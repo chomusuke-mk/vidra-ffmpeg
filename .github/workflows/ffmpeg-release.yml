@@ -3,17 +3,11 @@ name: Build and Release FFmpeg
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
-
 jobs:
   check_version:
     runs-on: ubuntu-latest
     outputs:
       target_version: ${{ steps.determine_version.outputs.version }}
-      should_build: ${{ steps.check_release.outputs.should_build }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -26,32 +20,8 @@ jobs:
           echo "La versión para release es: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if Release Assets Exist
-        id: check_release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.determine_version.outputs.version }}
-          REPO: ${{ github.repository }}
-        run: |
-          RELEASE_INFO=$(gh release view "$VERSION" --repo "$REPO" --json assets 2>/dev/null || echo "not_found")
-
-          if [ "$RELEASE_INFO" == "not_found" ]; then
-            echo "La release $VERSION no existe. Se lanzará la compilación."
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          else
-            ASSET_COUNT=$(echo "$RELEASE_INFO" | jq '.assets | length')
-            if [ "$ASSET_COUNT" -gt 0 ]; then
-              echo "✅ La release $VERSION ya existe y contiene $ASSET_COUNT assets. Omitiendo compilación redundante."
-              echo "should_build=false" >> $GITHUB_OUTPUT
-            else
-              echo "⚠️ La release $VERSION existe pero no contiene archivos (assets). Se lanzará la compilación."
-              echo "should_build=true" >> $GITHUB_OUTPUT
-            fi
-          fi
-
   build:
     needs: check_version
-    if: needs.check_version.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -146,15 +116,9 @@ jobs:
           subject-path: "release_assets/ffmpeg-*"
 
       - name: Publicar Release y Subir Assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.check_version.outputs.target_version }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Creando o actualizando Release en GitHub para la versión v$VERSION..."
-          gh release create "$VERSION" \
-            --title "v$VERSION" \
-            --notes-file release_notes.md || echo "El release ya existe, procediendo a subir assets..."
-
-          echo "Subiendo archivos crudos y sumas de verificación..."
-          gh release upload "$VERSION" release_assets/* --clobber
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.check_version.outputs.target_version }}
+          name: "FFmpeg v${{ needs.check_version.outputs.target_version }}"
+          body_path: release_notes.md
+          files: release_assets/*
