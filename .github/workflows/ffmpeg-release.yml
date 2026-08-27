@@ -61,8 +61,11 @@ jobs:
           path: release_assets/ffmpeg-${{ matrix.target_os }}-${{ matrix.target_arch }}.zip
 
   release:
+    name: Publish Release
     needs: [check_version, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
