@@ -99,7 +99,7 @@ jobs:
         run: |
           source config.sh
           cat <<EOF > release_notes.md
-          # 🚀 FFmpeg Multi-platform Release (v$VERSION)
+          # 🚀 FFmpeg Multi-platform Release ($VERSION)
 
           Compilación nativa y automatizada de los binarios del motor **FFmpeg** utilizando un entorno aislado en Docker.
 
@@ -126,7 +126,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.check_version.outputs.target_version }}
-          name: "FFmpeg v${{ needs.check_version.outputs.target_version }}"
+          name: "FFmpeg ${{ needs.check_version.outputs.target_version }}"
           body_path: release_notes.md
           files: |
             release_assets/ffmpeg-linux-x86_64.zip
