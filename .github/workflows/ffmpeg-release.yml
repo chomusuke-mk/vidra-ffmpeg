@@ -109,22 +109,17 @@ jobs:
           - **Fecha de Compilación:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
           ### 🛠️ Detalles de los Ejecutables Publicados
 
-          - **Linux x86_64:** \`ffmpeg\`, \`ffprobe\`
-          - **Windows x86_64:** \`ffmpeg.exe\`, \`ffprobe.exe\`
-          - **Android arm64-v8a:** \`ffmpeg\`, \`ffprobe\`
-          - **Android armeabi-v7a:** \`ffmpeg\`, \`ffprobe\`
-          - **Android x86:** \`ffmpeg\`, \`ffprobe\`
-          - **Android x86_64:** \`ffmpeg\`, \`ffprobe\`
+          - **Linux x86_64:** \`ffmpeg-linux-x86_64.zip\`
+          - **Windows x86_64:** \`ffmpeg-windows-x86_64.zip\`
+          - **Android arm64-v8a:** \`ffmpeg-android-arm64-v8a.zip\`
+          - **Android armeabi-v7a:** \`ffmpeg-android-armeabi-v7a.zip\`
+          - **Android x86:** \`ffmpeg-android-x86.zip\`
+          - **Android x86_64:** \`ffmpeg-android-x86_64.zip\`
 
           ### 🔒 Verificación de Integridad (SHA2-256 Checksums)
           \`\`\`text
           $(cat release_assets/SHA2-256SUMS)
           \`\`\`
-
-          ### 🔒 Verificación de Integridad (SHA2-512 Checksums)
-          \`\`\`text
-          $(cat release_assets/SHA2-512SUMS)
-          \`\`\`          
           EOF
 
       - name: Publicar Release y Subir Assets
