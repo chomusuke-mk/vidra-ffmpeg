@@ -66,7 +66,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -78,10 +77,20 @@ jobs:
           merge-multiple: true
 
       - name: Prepare Checksums
+        working-directory: release_assets
         run: |
-          cd release_assets
           sha256sum ffmpeg-* > SHA2-256SUMS
           sha512sum ffmpeg-* > SHA2-512SUMS
+      
+      - name: Generate GPG Signatures
+        working-directory: release_assets
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --output SHA2-256SUMS.sig SHA2-256SUMS
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" --detach-sign --output SHA2-512SUMS.sig SHA2-512SUMS
 
       - name: Generar Fechas y Notas de la Release en Markdown
         id: build_notes
@@ -112,12 +121,11 @@ jobs:
           $(cat release_assets/SHA2-256SUMS)
           \`\`\`
 
-          ⚠️ *Nota: Los archivos disponen de certificación de procedencia criptográfica de GitHub (Artifact Attestations). Puedes verificar su validez usando la extensión CLI de GitHub.*
+          ### 🔒 Verificación de Integridad (SHA2-512 Checksums)
+          \`\`\`text
+          $(cat release_assets/SHA2-512SUMS)
+          \`\`\`          
           EOF
-      - name: Certificar Procedencia de los Assets (Attestation de Verificación)
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: "release_assets/ffmpeg-*"
 
       - name: Publicar Release y Subir Assets
         uses: softprops/action-gh-release@v3

@@ -162,6 +162,7 @@ words:
   - openmpt
   - openssl
   - patreon
+  - pinentry
   - posix
   - realworld
   - resampler
