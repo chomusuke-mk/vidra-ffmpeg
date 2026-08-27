@@ -122,10 +122,20 @@ jobs:
           \`\`\`
           EOF
 
-      - name: Publicar Release y Subir Assets
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.check_version.outputs.target_version }}
           name: "FFmpeg v${{ needs.check_version.outputs.target_version }}"
           body_path: release_notes.md
-          files: release_assets/*
+          files: |
+            release_assets/ffmpeg-linux-x86_64.zip
+            release_assets/ffmpeg-windows-x86_64.zip
+            release_assets/ffmpeg-android-arm64-v8a.zip
+            release_assets/ffmpeg-android-armeabi-v7a.zip
+            release_assets/ffmpeg-android-x86.zip
+            release_assets/ffmpeg-android-x86_64.zip
+            release_assets/SHA2-256SUMS
+            release_assets/SHA2-512SUMS
+            release_assets/SHA2-256SUMS.sig
+            release_assets/SHA2-512SUMS.sig
