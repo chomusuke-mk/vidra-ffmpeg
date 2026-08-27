@@ -331,6 +331,13 @@ EOF
 		mv "$BUILDING_PREFIX/lib/xvidcore.a" "$BUILDING_PREFIX/lib/libxvidcore.a" || true
 		;;
 	libzmq) build_cmake -DCMAKE_SYSTEM_VERSION=6.1 -DPOLLER=epoll -DWITH_TLS=OFF -DBUILD_TESTS=OFF -DWITH_DOCS=OFF -DENABLE_DRAFTS=OFF -DBUILD_SHARED=OFF ;;
+	libsrt)
+		local extra_args=("-DENABLE_SHARED=OFF" "-DENABLE_STATIC=ON" "-DENABLE_APPS=OFF")
+		if [ "${TARGET_OS}" == "windows" ]; then
+			extra_args+=("-DENABLE_ENCRYPTION=OFF")
+		fi
+		build_cmake "${extra_args[@]}"
+		;;
 	libva) build_meson -Ddriverdir=/usr/lib/x86_64-linux-gnu/dri ;;
 	libdav1d) build_meson -Dtestdata_tests=false -Denable_docs=false ;;
 	xlib_deps)
