@@ -20,7 +20,7 @@ docker compose --progress=plain build
 ## Para compilar FFmpeg y FFprobe
 
 ```sh
-docker compose run --rm vidra-ffmpeg OS ARCH
+docker compose run --rm ffmpeg-builder OS ARCH
 ```
 
 ### Supported architectures
